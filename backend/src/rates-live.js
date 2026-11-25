@@ -10,9 +10,12 @@
 //   key, city, rate, source, url, as_of
 import { defaultRates, PBS, PBS_CITY, RATE_ITEMS, RATE_KEYS } from "./shared/rates.js";
 import { pbsPrices, pbsStatus } from "./pbs-live.js";
+import { getSettings } from "./settings.js";
 
 const TTL = (Number(process.env.RATES_CACHE_MINUTES) || 360) * 60 * 1000;
-const SHEET = sheetCsvUrl(process.env.RATES_SOURCE_URL || "");
+const ENV_SHEET = String(process.env.RATES_SOURCE_URL || "").trim().replace(/^["']|["']$/g, "");
+let SHEET = sheetCsvUrl(ENV_SHEET);
+let SHEET_RAW = ENV_SHEET;
 
 // Google Sheets links -> Google's open CSV endpoint (Visualization API).
 export function sheetCsvUrl(u) {
@@ -71,7 +74,16 @@ async function fetchSheet() {
   return out;
 }
 
+// The admin can point the app at another Google Sheet; re-read the setting and reset the cache when it changes.
+async function syncSheetUrl() {
+  const st = await getSettings();
+  const raw = (st.sheetUrl || ENV_SHEET || "").trim();
+  if (raw !== SHEET_RAW) { SHEET_RAW = raw; SHEET = sheetCsvUrl(raw); cache = { rows: null, fetchedAt: 0, error: null }; }
+}
+export function refreshRates() { cache = { rows: null, fetchedAt: 0, error: null }; }
+
 async function sheetRows() {
+  await syncSheetUrl();
   if (!SHEET) return null;
   if (cache.rows && Date.now() - cache.fetchedAt < TTL) return cache.rows;
   if (cache.error && Date.now() - cache.checkedAt < 5 * 60 * 1000) return cache.rows;
@@ -90,7 +102,7 @@ export async function liveRates(cityKey) {
   const base = defaultRates(cityKey);
   const pbsCity = PBS_CITY[cityKey] || "Islamabad";
   const [pbs, rows] = await Promise.all([pbsPrices().catch(() => null), sheetRows()]);
-  const sources = { pbs: false, sheet: false };
+  const sources = { pbs: false, sheet: false, admin: false };
 
   // 2. PBS live file
   if (pbs && pbs.prices[pbsCity]) {
@@ -109,9 +121,22 @@ export async function liveRates(cityKey) {
       sources.sheet = true;
     }
   }
+  // 4. Admin overrides (an emergency layer on top of the sheet; a city-specific one beats an all-cities one)
+  const overrides = (await getSettings()).overrides || [];
+  const ovBest = {};
+  for (const o of overrides) {
+    const c = (o.city || "").toLowerCase();
+    if (c && c !== cityKey && c !== pbsCity.toLowerCase()) continue;
+    if (!ovBest[o.key] || (c ? 1 : 0) >= (ovBest[o.key].city ? 1 : 0)) ovBest[o.key] = o;
+  }
+  for (const [k, o] of Object.entries(ovBest)) {
+    if (!base[k] || !(o.rate > 0)) continue;
+    base[k] = { ...base[k], rate: o.rate, src: "Set by administrator" + (o.note ? ": " + o.note : ""), asOf: (o.at || "").slice(0, 7) || base[k].asOf, estimate: false, live: "admin" };
+    sources.admin = true;
+  }
   return {
     city: cityKey, rates: base,
-    live: sources.pbs || sources.sheet, sources,
+    live: sources.pbs || sources.sheet || sources.admin, sources,
     pbsMonth: sources.pbs ? pbs.month : null,
     bundledMonth: PBS.asOf,
     fetchedAt: new Date(Math.max(pbs?.fetchedAt || 0, cache.fetchedAt || 0) || Date.now()).toISOString(),
@@ -121,6 +146,7 @@ export async function liveRates(cityKey) {
 
 export function ratesStatus() {
   return {
+    sheetUrl: SHEET_RAW || null,
     pbs: pbsStatus(),
     sheet: { configured: !!SHEET, url: SHEET ? SHEET.replace(/(spreadsheets\/d\/[^/]{6})[^/]+/, "$1…") : null, rows: cache.rows?.length || 0,
       fetchedAt: cache.fetchedAt ? new Date(cache.fetchedAt).toISOString() : null, error: cache.error },

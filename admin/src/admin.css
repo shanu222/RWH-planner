@@ -38,3 +38,31 @@ code { font: 12.5px var(--mono); background: var(--surface-2); padding: 1px 5px;
 .icon-btn:disabled, .btn:disabled { opacity: .45; cursor: not-allowed; }
 .btn.danger { color: var(--bad); }
 @media (max-width: 860px) { .editor .ed-grid { grid-template-columns: 1fr; } .row3 { grid-template-columns: 1fr 1fr; } }
+.login-wrap { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
+.login { width: 100%; max-width: 380px; display: flex; flex-direction: column; gap: 12px; }
+.login h1 { margin: 4px 0 0; }
+.login .mark { width: 36px; height: 36px; }
+.wide { width: 100%; height: 40px; }
+.page-h { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+.page-h h1 { margin: 0 0 4px; font-size: 22px; }
+.page-h p { margin: 0; max-width: 70ch; }
+.view { display: flex; flex-direction: column; gap: 16px; }
+.view[hidden], [hidden] { display: none !important; }
+.narrow { max-width: 460px; }
+.inline-form { display: flex; gap: 8px; flex-wrap: wrap; }
+.inline-form input { flex: 1 1 320px; }
+input[type="email"], input[type="number"], select { width: 100%; min-width: 0; height: 36px; padding: 0 10px; border: 1px solid var(--line-2); border-radius: 6px; background: var(--surface); color: var(--ink); font: 14px var(--font); }
+input[type="email"]:focus, input[type="number"]:focus, select:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-soft); }
+.row2.eq { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.tr-row { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; margin-top: -6px; font-size: 12.5px; }
+.prov-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
+.prov { display: flex; flex-direction: column; gap: 10px; }
+.prov p { margin: 0; }
+.beh-grid { display: flex; flex-direction: column; gap: 12px; }
+.order { display: flex; gap: 8px; flex-wrap: wrap; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 4px 3px 10px; border: 1px solid var(--line-2); border-radius: 999px; background: var(--surface-2); font-weight: 500; }
+.field.inline select { width: auto; min-width: 160px; }
+#rTable .ov { width: 120px; }
+#rTable { min-width: 760px; }
+.table-wrap { overflow-x: auto; }
+@media (max-width: 640px) { .row2.eq { grid-template-columns: 1fr; } .hide-sm { display: none; } }

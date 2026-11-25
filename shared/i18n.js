@@ -281,3 +281,21 @@ Object.assign(T.ur, {
   gNote: "یہ پاکستان میں رائج طریقوں پر مبنی عمومی رہنمائی ہے۔ مقامی تعمیراتی قواعد دیکھیں اور مخصوص مقام کا ڈیزائن کسی مستند انجینئر سے چیک کروائیں۔",
   shareTitle: "یہ ڈیزائن شیئر کریں", shareDesc: "یہ لنک کھولنے والا ہر شخص یہی اندراجات اور نتائج دیکھے گا۔", copyLink: "لنک کاپی کریں", linkCopied: "لنک کاپی ہو گیا",
 });
+
+// ---- AI assistant ----
+Object.assign(T.en, {
+  tabAssistant: "AI assistant",
+  aiTitle: "AI assistant", aiSub: "Ask about your design, rainwater harvesting, recharge wells, water quality or maintenance. Answers use the numbers from your current design.",
+  aiPlaceholder: "Ask a question…", aiSend: "Send", aiThinking: "Thinking…", aiError: "The assistant could not answer right now. Please try again.", aiUnavailable: "The AI assistant is not available at the moment.",
+  aiDisclaimer: "AI answers are guidance only. Have a qualified engineer check the final design.", aiClear: "Clear chat", aiYou: "You", aiBot: "Assistant",
+  aiS1: "Is my tank size sensible?", aiS2: "How do I keep the water safe to drink?", aiS3: "Where should I place the recharge well?", aiS4: "What maintenance do I need before the monsoon?",
+  aiReviewTitle: "Design review", aiReviewDesc: "A short review of your current design: what works, what to check and the next steps.", aiReviewBtn: "Review my design", aiReviewing: "Reviewing your design…",
+});
+Object.assign(T.ur, {
+  tabAssistant: "اے آئی معاون",
+  aiTitle: "اے آئی معاون", aiSub: "اپنے ڈیزائن، بارانی پانی کے حصول، ری چارج کنویں، پانی کے معیار یا دیکھ بھال کے بارے میں پوچھیں۔ جوابات آپ کے موجودہ ڈیزائن کے اعداد پر مبنی ہوتے ہیں۔",
+  aiPlaceholder: "اپنا سوال لکھیں…", aiSend: "بھیجیں", aiThinking: "جواب تیار ہو رہا ہے…", aiError: "معاون اس وقت جواب نہیں دے سکا۔ براہِ کرم دوبارہ کوشش کریں۔", aiUnavailable: "اے آئی معاون اس وقت دستیاب نہیں۔",
+  aiDisclaimer: "اے آئی کے جوابات صرف رہنمائی کے لیے ہیں۔ حتمی ڈیزائن کسی مستند انجینئر سے چیک کروائیں۔", aiClear: "گفتگو صاف کریں", aiYou: "آپ", aiBot: "معاون",
+  aiS1: "کیا میرے ٹینک کا سائز مناسب ہے؟", aiS2: "پانی کو پینے کے قابل کیسے رکھوں؟", aiS3: "ری چارج کنواں کہاں بنانا چاہیے؟", aiS4: "مون سون سے پہلے کون سی دیکھ بھال ضروری ہے؟",
+  aiReviewTitle: "ڈیزائن کا جائزہ", aiReviewDesc: "آپ کے موجودہ ڈیزائن کا مختصر جائزہ: کیا درست ہے، کیا چیک کرنا ہے اور اگلے اقدامات۔", aiReviewBtn: "میرے ڈیزائن کا جائزہ لیں", aiReviewing: "ڈیزائن کا جائزہ لیا جا رہا ہے…",
+});

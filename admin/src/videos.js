@@ -1,42 +1,15 @@
-import "@fontsource/inter/400.css";
-import "@fontsource/inter/500.css";
-import "@fontsource/inter/600.css";
-import "@fontsource/noto-nastaliq-urdu/400.css";
-import "./styles.css";
-import "./admin.css";
-
-const API = (import.meta.env.VITE_API_URL || "").replace(/\/+$/, "");
-const $ = id => document.getElementById(id);
-const esc = v => String(v ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-const KEY = "rwh-admin-token";
-
-let token = sessionStorage.getItem(KEY) || "";
-let state = { videos: [], categories: [], languages: {}, storage: false };
+import { API, $, esc, api } from "./api.js";
+export let state = { videos: [], categories: [], languages: {}, storage: false };
 let editing = null, type = "file", file = null, thumbBlob = null, duration = null, confirmDel = null;
 
-async function api(path, opts = {}) {
-  const res = await fetch(API + path, { ...opts, headers: { "Content-Type": "application/json", Authorization: "Bearer " + token, ...(opts.headers || {}) } });
-  const body = await res.json().catch(() => ({}));
-  if (!res.ok) { const e = new Error(body.error || "Request failed (" + res.status + ")"); e.status = res.status; throw e; }
-  return body;
-}
-
-// ---------- sign in ----------
-$("signinForm").addEventListener("submit", async e => {
-  e.preventDefault(); token = $("token").value.trim(); $("signinMsg").textContent = "";
-  try { await load(); sessionStorage.setItem(KEY, token); }
-  catch (err) { $("signinMsg").textContent = err.message; token = ""; }
-});
-$("logout").addEventListener("click", () => { sessionStorage.removeItem(KEY); token = ""; location.reload(); });
-
-async function load() {
+export async function loadVideos() {
   state = await api("/api/admin/videos");
-  $("signin").hidden = true; $("app").hidden = false; $("logout").hidden = false;
   $("storageWarn").hidden = state.storage; $("newBtn").disabled = !state.storage;
   $("cat").innerHTML = state.categories.map(c => `<option value="${c.key}">${esc(c.en)}</option>`).join("");
   $("lang").innerHTML = Object.entries(state.languages).map(([k, l]) => `<option value="${k}">${esc(l.en)}</option>`).join("");
   renderLib();
 }
+const load = loadVideos;
 
 // ---------- library ----------
 const fmtDur = s => s ? `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}` : "–";
@@ -180,8 +153,18 @@ $("edForm").addEventListener("submit", async e => {
     progress(1, "Saving…");
     await api("/api/admin/videos", { method: "POST", body: JSON.stringify(body) });
     msg("Saved."); await load(); setTimeout(closeEditor, 700);
-  } catch (err) { msg(err.message, true); if (err.status === 401) location.reload(); }
+  } catch (err) { msg(err.message, true);  }
   finally { $("saveBtn").disabled = false; }
 });
 
-if (token) load().catch(() => { sessionStorage.removeItem(KEY); token = ""; });
+
+// ---------- AI translation (title and description, either direction) ----------
+document.querySelectorAll("[data-tr]").forEach(b => b.addEventListener("click", async () => {
+  const [from, to, fl, tl] = b.dataset.tr.split(":");
+  const text = $(from).value.trim(), m = $("trMsg");
+  if (!text) { m.textContent = "Nothing to translate."; return; }
+  b.disabled = true; m.textContent = "Translating…"; m.className = "muted small";
+  try { const r = await api("/api/admin/ai/translate", { method: "POST", body: JSON.stringify({ text, from: fl, to: tl }) }); $(to).value = r.text; m.textContent = "Translated. Please check the wording."; }
+  catch (e) { m.textContent = e.message; m.className = "status err small"; }
+  finally { b.disabled = false; }
+}));

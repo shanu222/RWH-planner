@@ -2,26 +2,18 @@
 //   R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET   storage
 //   R2_PUBLIC_URL   optional public bucket URL (r2.dev or custom domain); otherwise signed links are used
 //   R2_ENDPOINT     optional, overrides https://<account>.r2.cloudflarestorage.com (used for local testing)
-//   ADMIN_TOKEN     secret for the admin page (uploads, edits)
+//   (admin access is handled in auth.js)
 //
 // The catalogue lives in the bucket as catalog.json. Until something is saved it is the starter list
 // from shared/videos.js. Uploaded files go to videos/<id>.<ext> and thumbs/<id>.jpg.
-import { S3Client, GetObjectCommand, PutObjectCommand, DeleteObjectCommand, HeadObjectCommand } from "@aws-sdk/client-s3";
+import { GetObjectCommand, PutObjectCommand, DeleteObjectCommand, HeadObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import crypto from "node:crypto";
 import { SEED_VIDEOS, VIDEO_CATEGORIES, VIDEO_LANGS, MAX_UPLOAD_BYTES, VIDEO_TYPES } from "./shared/videos.js";
 
-const E = process.env;
-const BUCKET = E.R2_BUCKET || "";
-const ENDPOINT = E.R2_ENDPOINT || (E.R2_ACCOUNT_ID ? `https://${E.R2_ACCOUNT_ID}.r2.cloudflarestorage.com` : "");
-const PUBLIC = (E.R2_PUBLIC_URL || "").replace(/\/+$/, "");
-const ADMIN = E.ADMIN_TOKEN || "";
-export const storageReady = !!(BUCKET && ENDPOINT && E.R2_ACCESS_KEY_ID && E.R2_SECRET_ACCESS_KEY);
-
-const s3 = storageReady ? new S3Client({
-  region: "auto", endpoint: ENDPOINT, forcePathStyle: true,
-  credentials: { accessKeyId: E.R2_ACCESS_KEY_ID, secretAccessKey: E.R2_SECRET_ACCESS_KEY },
-}) : null;
+import { s3, BUCKET, storageReady } from "./storage.js";
+export { storageReady };
+const PUBLIC = String(process.env.R2_PUBLIC_URL || "").trim().replace(/^["']|["']$/g, "").replace(/\/+$/, "");
 
 const CATALOG_KEY = "catalog.json";
 const CAT_KEYS = VIDEO_CATEGORIES.map(c => c.key);
@@ -100,15 +92,6 @@ export async function signedGet(id, kind) {
 }
 
 // ---------- admin ----------
-export function isAdmin(req) {
-  if (!ADMIN) return false;
-  const h = req.get("authorization") || "";
-  const tok = h.startsWith("Bearer ") ? h.slice(7) : "";
-  const a = Buffer.from(tok), b = Buffer.from(ADMIN);
-  return a.length === b.length && crypto.timingSafeEqual(a, b);
-}
-export const adminConfigured = () => !!ADMIN;
-
 export async function adminList() { return { videos: await readCatalog(true), categories: VIDEO_CATEGORIES, languages: VIDEO_LANGS, storage: storageReady, publicUrl: !!PUBLIC }; }
 
 const EXT = { "video/mp4": "mp4", "video/webm": "webm", "video/quicktime": "mov" };

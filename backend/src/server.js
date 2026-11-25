@@ -13,10 +13,14 @@ import express from "express";
 import cors from "cors";
 import puppeteer from "puppeteer-core";
 import { CITIES, ROOFS, TANKS, DEFAULTS, compute, normalizeInputs } from "./shared/calc.js";
-import { PLOTS, RATE_ITEMS, DOWNPIPE } from "./shared/rates.js";
-import { liveRates, ratesStatus } from "./rates-live.js";
+import { PLOTS, RATE_ITEMS, DOWNPIPE, RATE_KEYS } from "./shared/rates.js";
+import { liveRates, ratesStatus, refreshRates, sheetCsvUrl } from "./rates-live.js";
 import { buildReportHTML, footerTemplate } from "./report.js";
-import { publicVideos, signedGet, isAdmin, adminConfigured, adminList, presignUpload, saveVideo, deleteVideo, reorder, storageReady } from "./media.js";
+import { publicVideos, signedGet, adminList, presignUpload, saveVideo, deleteVideo, reorder, storageReady } from "./media.js";
+import { adminConfigured, adminProblem, login, loginAllowed, loginFailed, sessionOf, changePassword, passwordSource } from "./auth.js";
+import { getSettings, saveSettings } from "./settings.js";
+import { aiAvailable, aiSettingsView, saveAiSettings, testProvider, clearAiCache, PROVIDERS } from "./ai.js";
+import * as aiFeatures from "./ai-features.js";
 
 const PORT = Number(process.env.PORT) || 8080;
 const ALLOWED = (process.env.ALLOWED_ORIGINS || "*").split(",").map(s => s.trim()).filter(Boolean);
@@ -128,21 +132,83 @@ for (const kind of ["stream", "thumb"]) {
   }));
 }
 
-// admin: token check with a limit on failed attempts
-const fails = new Map();
-function admin(req, res, next) {
-  if (!adminConfigured()) return res.status(503).json({ error: "Admin is not configured. Set ADMIN_TOKEN on the server." });
-  const key = req.ip, now = Date.now();
-  const list = (fails.get(key) || []).filter(t => now - t < 600000);
-  if (list.length >= 10) return res.status(429).json({ error: "Too many failed attempts. Try again in 10 minutes." });
-  if (!isAdmin(req)) { list.push(now); fails.set(key, list); return res.status(401).json({ error: "Wrong admin token." }); }
-  next();
+// ---------- AI features (public) ----------
+const aiHits = new Map();
+function aiLimit(req, res, next) {
+  const key = req.ip, now = Date.now(), list = (aiHits.get(key) || []).filter(t => now - t < 600000);
+  if (list.length >= 30) return res.status(429).json({ error: "Too many questions. Please wait a few minutes." });
+  list.push(now); aiHits.set(key, list); next();
 }
+setInterval(() => { const now = Date.now(); for (const [k, v] of aiHits) if (!v.some(t => now - t < 600000)) aiHits.delete(k); }, 600000).unref();
+
+app.get("/api/ai/status", wrap(async (req, res) => { res.set("Cache-Control", "no-store"); res.json({ available: await aiAvailable() }); }));
+app.post("/api/ai/chat", aiLimit, wrap(async (req, res) => res.json(await aiFeatures.chat(req.body || {}))));
+app.post("/api/ai/review", aiLimit, wrap(async (req, res) => res.json(await aiFeatures.review(req.body || {}))));
+
+// ---------- admin ----------
+app.post("/api/admin/login", wrap(async (req, res) => {
+  if (!loginAllowed(req.ip)) return res.status(429).json({ error: "Too many failed attempts. Try again in 10 minutes." });
+  try { res.json(await login(req.body?.email, req.body?.password)); }
+  catch (e) { if (e.status === 401) loginFailed(req.ip); throw e; }
+}));
+
+function admin(req, res, next) {
+  if (!adminConfigured()) return res.status(503).json({ error: "Admin is not configured. " + adminProblem() });
+  const s = sessionOf(req);
+  if (!s) return res.status(401).json({ error: "Please sign in again." });
+  req.admin = s; next();
+}
+app.get("/api/admin/me", admin, (req, res) => res.json({ email: req.admin.e }));
+
+// videos
 app.get("/api/admin/videos", admin, wrap(async (req, res) => { res.set("Cache-Control", "no-store"); res.json(await adminList()); }));
 app.post("/api/admin/uploads", admin, wrap(async (req, res) => res.json(await presignUpload(req.body || {}))));
 app.post("/api/admin/videos", admin, wrap(async (req, res) => res.json(await saveVideo(req.body || {}))));
 app.delete("/api/admin/videos/:id", admin, wrap(async (req, res) => { await deleteVideo(req.params.id); res.json({ ok: true }); }));
 app.post("/api/admin/order", admin, wrap(async (req, res) => { await reorder(Array.isArray(req.body?.ids) ? req.body.ids : []); res.json({ ok: true }); }));
+
+// rates: the Google Sheet stays the source; the admin can change the sheet link, refresh, and add overrides
+const cityOk = c => !c || !!CITIES[c];
+app.get("/api/admin/rates", admin, wrap(async (req, res) => {
+  const city = CITIES[req.query.city] ? req.query.city : "islamabad";
+  const r = await liveRates(city);
+  const st = await getSettings();
+  res.set("Cache-Control", "no-store");
+  res.json({ ...r, items: RATE_ITEMS, status: ratesStatus(), overrides: st.overrides || [], envSheet: !!process.env.RATES_SOURCE_URL, sheetUrl: st.sheetUrl || "", cities: Object.fromEntries(Object.entries(CITIES).map(([k, c]) => [k, c.en])) });
+}));
+app.post("/api/admin/rates/refresh", admin, wrap(async (req, res) => { refreshRates(); res.json({ ok: true }); }));
+app.put("/api/admin/rates/sheet", admin, wrap(async (req, res) => {
+  const url = String(req.body?.url || "").trim();
+  if (url && !/^https:\/\/(docs\.google\.com\/spreadsheets|.+\.(csv)(\?.*)?$)/i.test(url)) return res.status(400).json({ error: "Paste a Google Sheets link or a link to a CSV file." });
+  await saveSettings(s => { if (url) s.sheetUrl = url; else delete s.sheetUrl; return s; });
+  refreshRates(); res.json({ ok: true });
+}));
+app.put("/api/admin/rates/override", admin, wrap(async (req, res) => {
+  const { key, city, rate, note } = req.body || {};
+  if (!RATE_KEYS.includes(key) || !cityOk(city) || !(Number(rate) > 0)) return res.status(400).json({ error: "Choose an item and enter a rate above zero." });
+  await saveSettings(s => {
+    s.overrides = (s.overrides || []).filter(o => !(o.key === key && (o.city || "") === (city || "")));
+    s.overrides.push({ key, city: city || "", rate: Number(rate), note: String(note || "").slice(0, 120), at: new Date().toISOString() });
+    return s;
+  });
+  res.json({ ok: true });
+}));
+app.delete("/api/admin/rates/override", admin, wrap(async (req, res) => {
+  const { key, city } = req.body || {};
+  await saveSettings(s => { s.overrides = (s.overrides || []).filter(o => !(o.key === key && (o.city || "") === (city || ""))); return s; });
+  res.json({ ok: true });
+}));
+
+// AI settings and key tests
+app.get("/api/admin/ai", admin, wrap(async (req, res) => { res.set("Cache-Control", "no-store"); res.json({ ...(await aiSettingsView()), storage: storageReady, providersList: PROVIDERS }); }));
+app.put("/api/admin/ai", admin, wrap(async (req, res) => { await saveAiSettings(saveSettings, req.body || {}); res.json(await aiSettingsView()); }));
+app.post("/api/admin/ai/test", admin, wrap(async (req, res) => res.json(await testProvider(req.body?.provider, req.body?.key))));
+app.post("/api/admin/ai/clear-cache", admin, (req, res) => { clearAiCache(); res.json({ ok: true }); });
+app.post("/api/admin/ai/translate", admin, wrap(async (req, res) => res.json(await aiFeatures.translate(req.body || {}))));
+
+// account
+app.get("/api/admin/account", admin, wrap(async (req, res) => res.json({ email: req.admin.e, passwordSource: await passwordSource(), storage: storageReady })));
+app.post("/api/admin/password", admin, wrap(async (req, res) => { await changePassword(req.body?.current, req.body?.next); res.json({ ok: true }); }));
 
 app.use((err, req, res, next) => {
   if (err && err.status) return res.status(err.status).json({ error: err.message });

@@ -33,6 +33,7 @@
     <span class="tab-sep" aria-hidden="true"></span>
     <a role="tab" href="#training" data-tab="training" data-t="tabTraining"></a>
     <a role="tab" href="#guides" data-tab="guides" data-t="tabGuides"></a>
+    <a role="tab" href="#assistant" data-tab="assistant" data-t="tabAssistant" id="tabAssistant" hidden></a>
   </nav>
 </header>
 
@@ -240,6 +241,28 @@
         <div class="cal" id="cal"></div>
       </div>
       <p class="fine" data-t="gNote"></p>
+    </section>
+
+    <!-- AI ASSISTANT -->
+    <section class="view" id="v-assistant" role="tabpanel" hidden>
+      <div class="page-h"><div><h1 data-t="aiTitle"></h1><p class="muted" data-t="aiSub"></p></div></div>
+      <div class="grid2 ai-grid">
+        <div class="card chat">
+          <div class="chat-log" id="chatLog" aria-live="polite"></div>
+          <div class="chips" id="chatChips"></div>
+          <form class="chat-form" id="chatForm" autocomplete="off">
+            <input id="chatInput" type="text" maxlength="1500" aria-label="Question">
+            <button class="btn primary" type="submit" id="chatSend" data-t="aiSend"></button>
+          </form>
+          <div class="chat-foot"><span class="fine" data-t="aiDisclaimer"></span><button type="button" class="link muted" id="chatClear" data-t="aiClear"></button></div>
+        </div>
+        <div class="card">
+          <div class="card-h"><h2 data-t="aiReviewTitle"></h2></div>
+          <p class="muted small" data-t="aiReviewDesc"></p>
+          <button class="btn primary" type="button" id="reviewBtn" data-t="aiReviewBtn"></button>
+          <div class="ai-text" id="reviewOut"></div>
+        </div>
+      </div>
     </section>
 
     <footer class="foot fine" data-t="footer"></footer>

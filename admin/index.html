@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>RWH Planner · Admin</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+</head>
+<body class="admin">
+
+<!-- sign in -->
+<main class="login-wrap" id="login">
+  <form class="card login" id="loginForm">
+    <svg class="mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--brand)"/><path d="M16 6.5c-3.6 5-6.5 8.6-6.5 12.1a6.5 6.5 0 0 0 13 0c0-3.5-2.9-7.1-6.5-12.1z" fill="#fff"/></svg>
+    <h1>Admin sign in</h1>
+    <p class="muted small">RWH Planner administration</p>
+    <label class="field"><span>Email</span><input id="email" type="email" autocomplete="username" required></label>
+    <label class="field"><span>Password</span><input id="password" type="password" autocomplete="current-password" required></label>
+    <button class="btn primary wide" type="submit" id="loginBtn">Sign in</button>
+    <p class="status err" id="loginMsg" role="alert"></p>
+  </form>
+</main>
+
+<div id="shell" hidden>
+  <header class="appbar">
+    <div class="bar container">
+      <span class="brand">
+        <svg class="mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--brand)"/><path d="M16 6.5c-3.6 5-6.5 8.6-6.5 12.1a6.5 6.5 0 0 0 13 0c0-3.5-2.9-7.1-6.5-12.1z" fill="#fff"/></svg>
+        <span class="brand-t"><b>RWH Planner</b><small>Administration</small></span>
+      </span>
+      <div class="bar-r"><span class="muted small hide-sm" id="who"></span><button class="btn" type="button" id="logout">Sign out</button></div>
+    </div>
+    <nav class="tabs container" role="tablist">
+      <a role="tab" href="#videos" data-tab="videos">Videos</a>
+      <a role="tab" href="#rates" data-tab="rates">Rates</a>
+      <a role="tab" href="#ai" data-tab="ai">AI and keys</a>
+      <a role="tab" href="#account" data-tab="account">Account</a>
+    </nav>
+  </header>
+
+  <main class="container admin-main">
+    <!-- VIDEOS -->
+    <section class="view" id="p-videos" hidden>
+      <div class="page-h"><div><h1>Training videos</h1><p class="muted" id="libSub"></p></div><button class="btn primary" type="button" id="newBtn">Add video</button></div>
+      <p class="notice" id="storageWarn" hidden>Storage is not configured. Set the R2 variables on Railway to add or edit videos.</p>
+
+      <section class="card editor" id="editor" hidden>
+        <div class="card-h"><h2 id="edTitle">Add video</h2><button type="button" class="icon-btn" id="edClose" aria-label="Close"><svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></div>
+        <form id="edForm" class="ed-grid">
+          <div class="ed-media">
+            <div class="seg" role="group" id="typeSeg">
+              <button type="button" data-type="file" aria-pressed="true">Upload file</button>
+              <button type="button" data-type="youtube">YouTube</button>
+              <button type="button" data-type="vimeo">Vimeo</button>
+            </div>
+            <label class="drop" id="drop" for="file">
+              <input id="file" type="file" accept="video/mp4,video/webm,video/quicktime" hidden>
+              <div class="drop-in" id="dropIn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m-5 5l5-5 5 5M5 20h14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+                <b>Choose a video or drop it here</b><span class="muted small">MP4 (H.264) recommended · up to 2 GB</span></div>
+              <video id="preview" muted playsinline hidden></video>
+            </label>
+            <label class="field" id="urlField" hidden><span id="urlLabel">Video link</span><input id="url" type="url" placeholder="https://"></label>
+            <div class="thumb-row" id="thumbRow" hidden><img id="thumbImg" alt="Thumbnail"><div><b class="small">Thumbnail</b><p class="muted small">Taken from the video automatically.</p><button type="button" class="link" id="retake">Use current frame</button></div></div>
+            <div class="progress" id="prog" hidden><div class="bar-fill" id="progBar"></div><span id="progText"></span></div>
+          </div>
+          <div class="ed-fields">
+            <div class="row2 eq">
+              <label class="field"><span>Title (English)</span><input id="tEn" type="text" maxlength="140"></label>
+              <label class="field"><span>Title (Urdu)</span><input id="tUr" type="text" maxlength="140" dir="rtl" lang="ur"></label>
+            </div>
+            <div class="tr-row"><button type="button" class="link" data-tr="tEn:tUr:en:ur">Translate English → Urdu</button><button type="button" class="link" data-tr="tUr:tEn:ur:en">Translate Urdu → English</button></div>
+            <div class="row2 eq">
+              <label class="field"><span>Description (English)</span><textarea id="dEn" rows="4" maxlength="1200"></textarea></label>
+              <label class="field"><span>Description (Urdu)</span><textarea id="dUr" rows="4" maxlength="1200" dir="rtl" lang="ur"></textarea></label>
+            </div>
+            <div class="tr-row"><button type="button" class="link" data-tr="dEn:dUr:en:ur">Translate English → Urdu</button><button type="button" class="link" data-tr="dUr:dEn:ur:en">Translate Urdu → English</button><span class="muted small" id="trMsg"></span></div>
+            <div class="row3">
+              <label class="field"><span>Category</span><select id="cat"></select></label>
+              <label class="field"><span>Spoken language</span><select id="lang"></select></label>
+              <label class="field"><span>Subtitles</span><select id="subs"><option value="">None</option><option value="en">English</option><option value="ur">Urdu</option></select></label>
+            </div>
+            <div class="row2 eq">
+              <label class="field"><span>Source / credit</span><input id="src" type="text" maxlength="160" placeholder="e.g. PCRWR, Resilience Technologies Labs"></label>
+              <label class="field"><span>Source link (optional)</span><input id="srcUrl" type="url" placeholder="https://"></label>
+            </div>
+            <label class="check"><input id="pub" type="checkbox" checked> Published (visible to the public)</label>
+            <div class="ed-actions"><button class="btn primary" type="submit" id="saveBtn">Upload and save</button><button class="btn" type="button" id="cancelBtn">Cancel</button><span class="status" id="edMsg" role="status"></span></div>
+          </div>
+        </form>
+      </section>
+      <section class="card"><div class="table-wrap"><table class="tbl lib" id="lib"></table></div></section>
+    </section>
+
+    <!-- RATES -->
+    <section class="view" id="p-rates" hidden>
+      <div class="page-h"><div><h1>Rates</h1><p class="muted">The app reads prices from your Google Sheet and the latest PBS report. Change the sheet to update every visitor. Overrides below are for quick corrections.</p></div></div>
+      <section class="card">
+        <div class="card-h"><h2>Google Sheet</h2><span class="status-pill" id="sheetPill"></span></div>
+        <form class="inline-form" id="sheetForm">
+          <input id="sheetUrl" type="url" placeholder="https://docs.google.com/spreadsheets/d/…" aria-label="Google Sheet link">
+          <button class="btn primary" type="submit">Save link</button>
+          <button class="btn" type="button" id="refreshRates">Refresh now</button>
+          <a class="btn" id="openSheet" target="_blank" rel="noopener" hidden>Open sheet</a>
+        </form>
+        <p class="fine" id="sheetMsg" role="status"></p>
+        <p class="fine">Share the sheet as “Anyone with the link – Viewer”. Columns: key, city, rate, source, url, as_of. The app re-reads it every few hours; “Refresh now” reads it straight away.</p>
+      </section>
+      <section class="card">
+        <div class="card-h"><h2>Rates in use</h2><label class="field inline"><span>City</span><select id="rCity"></select></label></div>
+        <div class="table-wrap"><table class="tbl" id="rTable"></table></div>
+        <p class="fine" id="rMsg" role="status"></p>
+      </section>
+    </section>
+
+    <!-- AI -->
+    <section class="view" id="p-ai" hidden>
+      <div class="page-h"><div><h1>AI and keys</h1><p class="muted">Used for the public AI assistant, design reviews and Urdu/English translation in this admin. Keys are stored encrypted and are never shown in full.</p></div></div>
+      <p class="notice" id="aiStorageWarn" hidden>Storage is not configured, so key changes cannot be saved. Keys from Railway variables still work.</p>
+      <div class="prov-grid" id="provGrid"></div>
+      <section class="card">
+        <div class="card-h"><h2>Behaviour</h2></div>
+        <form id="aiForm" class="beh-grid">
+          <label class="check"><input id="aiEnabled" type="checkbox"> AI features switched on</label>
+          <label class="check"><input id="aiFallback" type="checkbox"> Fallback to the next model / provider on errors</label>
+          <label class="check"><input id="aiCache" type="checkbox"> Cache answers</label>
+          <label class="check"><input id="aiLogging" type="checkbox"> Log requests (no content)</label>
+          <label class="field"><span>Provider order</span><div class="order" id="aiOrder"></div></label>
+          <div class="row3">
+            <label class="field"><span>Retries per model</span><input id="aiRetries" type="number" min="0" max="5"></label>
+            <label class="field"><span>Timeout (seconds)</span><input id="aiTimeout" type="number" min="5" max="120"></label>
+            <label class="field"><span>Cache time (seconds)</span><input id="aiTtl" type="number" min="0" max="86400"></label>
+          </div>
+          <div class="ed-actions"><button class="btn primary" type="submit">Save behaviour</button><button class="btn" type="button" id="aiClear">Clear answer cache</button><span class="status" id="aiMsg" role="status"></span></div>
+        </form>
+      </section>
+    </section>
+
+    <!-- ACCOUNT -->
+    <section class="view" id="p-account" hidden>
+      <div class="page-h"><div><h1>Account</h1><p class="muted" id="acctSub"></p></div></div>
+      <section class="card narrow">
+        <div class="card-h"><h2>Change password</h2></div>
+        <form id="pwForm" class="stack">
+          <label class="field"><span>Current password</span><input id="pwCur" type="password" autocomplete="current-password" required></label>
+          <label class="field"><span>New password (10+ characters)</span><input id="pwNew" type="password" autocomplete="new-password" minlength="10" required></label>
+          <label class="field"><span>Repeat new password</span><input id="pwNew2" type="password" autocomplete="new-password" minlength="10" required></label>
+          <div class="ed-actions"><button class="btn primary" type="submit">Change password</button><span class="status" id="pwMsg" role="status"></span></div>
+        </form>
+      </section>
+    </section>
+  </main>
+</div>
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>

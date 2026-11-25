@@ -80,7 +80,7 @@ Rates come in four layers, each overriding the one before:
 ## Training videos and guides
 
 - **Training videos** (`#training`): a public library with categories, search and an in-page player. It starts with six films verified on TheWaterChannel (recharge wells and pits, rooftop harvesting, karez restoration by IUCN Pakistan, check dams, greywater reuse). Uploaded videos are stored in Cloudflare R2 and streamed through short-lived signed links, so the bucket stays private.
-- **Admin page** (`/admin`): sign in with `ADMIN_TOKEN`, upload MP4/WebM/MOV files up to 2 GB straight to R2 (with progress, automatic thumbnail and duration), or add YouTube/Vimeo links. Titles and descriptions in English and Urdu, category, language, subtitles, source credit, publish/unpublish, reorder and delete. The catalogue is stored in the bucket as `catalog.json`.
+- **Admin app** (separate site in `admin/`, see below): sign in with email and password, upload MP4/WebM/MOV files up to 2 GB straight to R2 (with progress, automatic thumbnail and duration), or add YouTube/Vimeo links. Titles and descriptions in English and Urdu, category, language, subtitles, source credit, publish/unpublish, reorder and delete. The catalogue is stored in the bucket as `catalog.json`.
 - **Guides** (`#guides`): eight technique guides grouped by the national WASH innovation themes, with a seasonal maintenance calendar.
 - **Share link**: the Report tab gives a link that opens the same design for anyone.
 
@@ -89,7 +89,6 @@ Rates come in four layers, each overriding the one before:
 | `R2_ACCOUNT_ID` | Cloudflare account ID |
 | `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` | R2 API token (Object Read & Write on the bucket) |
 | `R2_BUCKET` | Bucket name, e.g. `rwh-media` |
-| `ADMIN_TOKEN` | Long random secret for `/admin` |
 | `R2_PUBLIC_URL` | Optional custom-domain URL for the bucket; signed links are used if empty |
 
 **R2 CORS policy** (bucket → Settings → CORS Policy), needed for uploads from the admin page:
@@ -97,7 +96,7 @@ Rates come in four layers, each overriding the one before:
 ```json
 [
   {
-    "AllowedOrigins": ["https://rwh-planner.vercel.app"],
+    "AllowedOrigins": ["https://YOUR-ADMIN.vercel.app"],
     "AllowedMethods": ["GET", "PUT", "HEAD"],
     "AllowedHeaders": ["content-type"],
     "ExposeHeaders": ["ETag"],
@@ -105,6 +104,37 @@ Rates come in four layers, each overriding the one before:
   }
 ]
 ```
+
+## Admin app (separate site)
+
+`admin/` is its own Vite app with its own URL. Deploy it as a second Vercel project: Root Directory `admin`, env `VITE_API_URL` = the Railway URL. Add its URL to `ALLOWED_ORIGINS` on Railway and to the R2 bucket CORS policy.
+
+Sign-in is email + password (`ADMIN_EMAIL`, `ADMIN_PASSWORD`), giving a 12-hour session signed with `SESSION_SECRET` (a long random string). The password can be changed inside the admin; the new one is stored hashed and replaces `ADMIN_PASSWORD`. After 8 failed attempts the IP is blocked for 10 minutes.
+
+| Tab | What the admin can do |
+| --- | --- |
+| Videos | Upload, edit, publish/unpublish, reorder, **delete**; translate titles and descriptions English ↔ Urdu with AI |
+| Rates | Change or refresh the Google Sheet link, see which source each rate comes from, set or clear per-city overrides |
+| AI and keys | Add, replace, **test** (even before saving) and remove OpenAI, Gemini and OpenRouter keys; models, provider order, retries, timeout, cache |
+| Account | Change password |
+
+Rates priority (later wins): bundled published rates → PBS file → Google Sheet → admin override → the visitor's own edits. The Google Sheet is the main source; admin overrides are for quick corrections.
+
+Keys saved in the admin are encrypted (AES-256-GCM) with a key derived from `SESSION_SECRET`, never sent back to the browser, and win over keys in environment variables. Changing `SESSION_SECRET` invalidates saved keys.
+
+## AI features
+
+With at least one working key, the public app shows an **AI assistant** tab (answers grounded in the visitor's own design numbers, English and Urdu) and an **AI design review**. The admin gets translation. Providers are tried in the configured order with model fallback, retries and an answer cache.
+
+| Variable (Railway) | Default |
+| --- | --- |
+| `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `SESSION_SECRET` | required for the admin |
+| `AI_PROVIDER_ORDER` | `openai,gemini,openrouter` |
+| `AI_FALLBACK_ENABLED`, `AI_CACHE_ENABLED`, `AI_LOGGING` | `true` |
+| `AI_CACHE_TTL` / `AI_TIMEOUT_MS` / `AI_MAX_RETRIES` | `3600` / `45000` / `3` |
+| `OPENAI_API_KEY`, `OPENAI_MODEL`, `OPENAI_FALLBACK_MODEL` | `gpt-4.1`, `gpt-4.1-mini` |
+| `GEMINI_API_KEY`, `GEMINI_MODEL`, `GEMINI_FALLBACK_MODEL` | `gemini-2.5-flash`, `gemini-2.0-flash` |
+| `OPENROUTER_API_KEY`, `OPENROUTER_MODELS` | comma-separated model list |
 
 ## Run locally
 

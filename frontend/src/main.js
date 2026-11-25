@@ -10,6 +10,7 @@ import { CITIES, ROOFS, TANKS, DEFAULTS, FT2, STORM_M, compute, normalizeInputs,
 import { RATE_ITEMS, PLOTS, PBS, PBS_CITY } from "./shared/rates.js";
 import { MONTHS, t, fmt, round100, money } from "./shared/i18n.js";
 import { initLearn, renderTraining, renderGuides, openFromHash } from "./learn.js";
+import { initAssistant, renderAssistant } from "./assistant.js";
 
 const API = (import.meta.env.VITE_API_URL || "").replace(/\/+$/, "");
 const STORE = "rwh-planner-v4";
@@ -74,6 +75,7 @@ function applyLang() {
   renderRateStatus();
   if (view === "training") renderTraining();
   if (view === "guides") renderGuides();
+  if (view === "assistant") renderAssistant();
 }
 
 function fillForm() {
@@ -260,8 +262,8 @@ function monthTable(r) {
 }
 
 // ---------- tabs (hash routing) ----------
-const VIEWS = ["overview", "water", "cost", "recharge", "report", "training", "guides"];
-const LEARN = ["training", "guides"];
+const VIEWS = ["overview", "water", "cost", "recharge", "report", "training", "guides", "assistant"];
+const LEARN = ["training", "guides", "assistant"];
 let view = "overview";
 function route() {
   const h = location.hash.replace("#", "").split("/")[0];
@@ -271,6 +273,7 @@ function route() {
   document.body.classList.toggle("learn", LEARN.includes(view));
   if (view === "training") { renderTraining(); openFromHash(); } else openFromHash();
   if (view === "guides") renderGuides();
+  if (view === "assistant") renderAssistant();
   if (!LEARN.includes(view)) update();
 }
 addEventListener("hashchange", () => { route(); window.scrollTo({ top: 0 }); });
@@ -423,6 +426,7 @@ $("copyShare").addEventListener("click", async () => {
   const b = $("copyShare"); b.textContent = t(S.lang, "linkCopied"); setTimeout(() => { b.textContent = t(S.lang, "copyLink"); }, 1800);
 });
 initLearn({ api: API, lang: () => S.lang });
+initAssistant({ api: API, lang: () => S.lang, inputs: () => { const o = {}; for (const k of SHARE_KEYS) if (S[k] != null) o[k] = S[k]; return o; } });
 
 applyLang();
 route();
