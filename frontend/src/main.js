@@ -9,6 +9,7 @@ import "./styles.css";
 import { CITIES, ROOFS, TANKS, DEFAULTS, FT2, STORM_M, compute, normalizeInputs, plotRoofArea } from "./shared/calc.js";
 import { RATE_ITEMS, PLOTS, PBS, PBS_CITY } from "./shared/rates.js";
 import { MONTHS, t, fmt, round100, money } from "./shared/i18n.js";
+import { initLearn, renderTraining, renderGuides, openFromHash } from "./learn.js";
 
 const API = (import.meta.env.VITE_API_URL || "").replace(/\/+$/, "");
 const STORE = "rwh-planner-v4";
@@ -17,7 +18,22 @@ const $ = id => document.getElementById(id);
 // ---------- state ----------
 let S = { ...DEFAULTS, lang: "en" };
 try { const saved = JSON.parse(localStorage.getItem(STORE) || "null"); if (saved && typeof saved === "object") S = { ...S, ...saved }; } catch {}
+// a shared design link (?d=…) overrides the saved inputs
+const SHARE_KEYS = ["city", "plot", "marlaSize", "storeys", "area", "unit", "roof", "people", "lpcd", "houses", "tank", "rain", "contingency", "rates"];
+try {
+  const d = new URLSearchParams(location.search).get("d");
+  if (d) {
+    const json = JSON.parse(decodeURIComponent(escape(atob(d.replace(/-/g, "+").replace(/_/g, "/")))));
+    for (const k of SHARE_KEYS) if (k in json) S[k] = json[k]; else if (k === "rates" || k === "rain" || k === "tank") S[k] = null;
+    history.replaceState(null, "", location.pathname + location.hash);
+  }
+} catch {}
 S = { ...normalizeInputs(S), lang: S.lang === "ur" ? "ur" : "en" };
+function shareUrl() {
+  const o = {}; for (const k of SHARE_KEYS) if (S[k] != null) o[k] = S[k];
+  const d = btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  return `${location.origin}${location.pathname}?d=${d}#overview`;
+}
 let lastResult = null;
 let published = null;   // live rates from the API for the current city
 let ratesMeta = null;   // { live, fetchedAt, … } or { offline: true }
@@ -56,6 +72,8 @@ function applyLang() {
   fillForm();
   if (lastResult) renderRates(lastResult, true);
   renderRateStatus();
+  if (view === "training") renderTraining();
+  if (view === "guides") renderGuides();
 }
 
 function fillForm() {
@@ -181,6 +199,7 @@ function update() {
     [t(L, "sysTanker"), t(L, "tankersN", { n: fmt(r.tankersEquivalent, 1) })],
   ].map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("");
   monthTable(r);
+  $("shareUrl").value = shareUrl();
 
   $("tank").value = TANKS.indexOf(r.tank);
   $("tankOut").textContent = t(L, "litres", { n: fmt(r.tank) });
@@ -241,14 +260,18 @@ function monthTable(r) {
 }
 
 // ---------- tabs (hash routing) ----------
-const VIEWS = ["overview", "water", "cost", "recharge", "report"];
+const VIEWS = ["overview", "water", "cost", "recharge", "report", "training", "guides"];
+const LEARN = ["training", "guides"];
 let view = "overview";
 function route() {
-  const h = location.hash.replace("#", "");
+  const h = location.hash.replace("#", "").split("/")[0];
   view = VIEWS.includes(h) ? h : "overview";
   for (const v of VIEWS) $("v-" + v).hidden = v !== view;
   document.querySelectorAll(".tabs a").forEach(a => a.setAttribute("aria-selected", a.dataset.tab === view));
-  update();
+  document.body.classList.toggle("learn", LEARN.includes(view));
+  if (view === "training") { renderTraining(); openFromHash(); } else openFromHash();
+  if (view === "guides") renderGuides();
+  if (!LEARN.includes(view)) update();
 }
 addEventListener("hashchange", () => { route(); window.scrollTo({ top: 0 }); });
 
@@ -393,6 +416,13 @@ const inputsBox = $("inputsBox"), wide = matchMedia("(min-width: 861px)");
 inputsBox.querySelector("summary").addEventListener("click", e => { if (wide.matches) e.preventDefault(); });
 const syncInputs = () => { inputsBox.open = wide.matches; };
 wide.addEventListener("change", syncInputs); syncInputs(); // phones: results first, inputs one tap away
+
+$("copyShare").addEventListener("click", async () => {
+  const inp = $("shareUrl"); inp.select();
+  try { await navigator.clipboard.writeText(inp.value); } catch { document.execCommand("copy"); }
+  const b = $("copyShare"); b.textContent = t(S.lang, "linkCopied"); setTimeout(() => { b.textContent = t(S.lang, "copyLink"); }, 1800);
+});
+initLearn({ api: API, lang: () => S.lang });
 
 applyLang();
 route();

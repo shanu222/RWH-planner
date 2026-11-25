@@ -257,3 +257,27 @@ Object.assign(T.ur, {
   dlEnShort: "انگریزی پی ڈی ایف", dlUrShort: "اردو پی ڈی ایف", summaryDesc: "سادہ متن میں خلاصہ، جو ای میل یا واٹس ایپ میں بھیجا جا سکتا ہے۔",
   wellCard: "ری چارج کنویں کا ڈیزائن", areaCardDesc: "یہی ڈیزائن کسی گلی، سوسائٹی یا قصبے کی سطح پر لاگو کریں۔",
 });
+
+// ---- Training videos, guides, sharing ----
+Object.assign(T.en, {
+  tabTraining: "Training videos", tabGuides: "Guides",
+  trTitle: "Training videos", trSub: "Short films on rainwater harvesting, groundwater recharge, water quality and reuse, from practitioners in Pakistan and the region.",
+  searchVideos: "Search videos", allCats: "All", vCount: "{n} videos", vCount1: "1 video", noVideos: "No videos match your search.", vLoading: "Loading videos…",
+  vSource: "Source", vWatchOn: "Original page", vLang: "{l}", vSubs: "{l} subtitles", vOpen: "Play video: {t}",
+  gTitle: "Techniques and guides", gSub: "Practical guidance on harvesting, recharge, treatment and reuse, grouped by the national WASH innovation themes.",
+  gWhen: "Where it works", gPoints: "Key design points", gCare: "Maintenance", gTheme: "Theme {n}", gVideos: "Watch videos", gPlanner: "Size it in the planner", gMore: "Read guide", gLess: "Show less",
+  calTitle: "Seasonal maintenance calendar", calSub: "A simple routine that keeps a rooftop system and recharge well working through the year.",
+  gNote: "General guidance based on common practice in Pakistan. Check local building rules and have a qualified engineer review site-specific designs.",
+  shareTitle: "Share this design", shareDesc: "Anyone who opens this link sees the same inputs and results.", copyLink: "Copy link", linkCopied: "Link copied",
+});
+Object.assign(T.ur, {
+  tabTraining: "تربیتی ویڈیوز", tabGuides: "رہنمائی",
+  trTitle: "تربیتی ویڈیوز", trSub: "بارانی پانی کے حصول، زیرِ زمین ری چارج، پانی کے معیار اور دوبارہ استعمال پر پاکستان اور خطے کے ماہرین کی مختصر فلمیں۔",
+  searchVideos: "ویڈیو تلاش کریں", allCats: "تمام", vCount: "{n} ویڈیوز", vCount1: "1 ویڈیو", noVideos: "آپ کی تلاش سے کوئی ویڈیو نہیں ملی۔", vLoading: "ویڈیوز لوڈ ہو رہی ہیں…",
+  vSource: "ماخذ", vWatchOn: "اصل صفحہ", vLang: "{l}", vSubs: "{l} سب ٹائٹلز", vOpen: "ویڈیو چلائیں: {t}",
+  gTitle: "طریقے اور رہنمائی", gSub: "بارانی پانی کے حصول، ری چارج، صفائی اور دوبارہ استعمال سے متعلق عملی رہنمائی، قومی واش اختراعی موضوعات کے مطابق۔",
+  gWhen: "کہاں موزوں ہے", gPoints: "ڈیزائن کے اہم نکات", gCare: "دیکھ بھال", gTheme: "موضوع {n}", gVideos: "ویڈیوز دیکھیں", gPlanner: "پلانر میں سائز طے کریں", gMore: "مکمل رہنمائی", gLess: "کم دکھائیں",
+  calTitle: "موسمی دیکھ بھال کا کیلنڈر", calSub: "ایک سادہ معمول جو چھت کے نظام اور ری چارج کنویں کو سارا سال فعال رکھتا ہے۔",
+  gNote: "یہ پاکستان میں رائج طریقوں پر مبنی عمومی رہنمائی ہے۔ مقامی تعمیراتی قواعد دیکھیں اور مخصوص مقام کا ڈیزائن کسی مستند انجینئر سے چیک کروائیں۔",
+  shareTitle: "یہ ڈیزائن شیئر کریں", shareDesc: "یہ لنک کھولنے والا ہر شخص یہی اندراجات اور نتائج دیکھے گا۔", copyLink: "لنک کاپی کریں", linkCopied: "لنک کاپی ہو گیا",
+});

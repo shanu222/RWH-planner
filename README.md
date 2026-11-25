@@ -77,6 +77,35 @@ Rates come in four layers, each overriding the one before:
 | `RATES_SOURCE_URL` | – | Google Sheet link (or any CSV URL) |
 | `RATES_CACHE_MINUTES` | `360` | How often the sheet is re-read |
 
+## Training videos and guides
+
+- **Training videos** (`#training`): a public library with categories, search and an in-page player. It starts with six films verified on TheWaterChannel (recharge wells and pits, rooftop harvesting, karez restoration by IUCN Pakistan, check dams, greywater reuse). Uploaded videos are stored in Cloudflare R2 and streamed through short-lived signed links, so the bucket stays private.
+- **Admin page** (`/admin`): sign in with `ADMIN_TOKEN`, upload MP4/WebM/MOV files up to 2 GB straight to R2 (with progress, automatic thumbnail and duration), or add YouTube/Vimeo links. Titles and descriptions in English and Urdu, category, language, subtitles, source credit, publish/unpublish, reorder and delete. The catalogue is stored in the bucket as `catalog.json`.
+- **Guides** (`#guides`): eight technique guides grouped by the national WASH innovation themes, with a seasonal maintenance calendar.
+- **Share link**: the Report tab gives a link that opens the same design for anyone.
+
+| Variable (Railway) | Purpose |
+| --- | --- |
+| `R2_ACCOUNT_ID` | Cloudflare account ID |
+| `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` | R2 API token (Object Read & Write on the bucket) |
+| `R2_BUCKET` | Bucket name, e.g. `rwh-media` |
+| `ADMIN_TOKEN` | Long random secret for `/admin` |
+| `R2_PUBLIC_URL` | Optional custom-domain URL for the bucket; signed links are used if empty |
+
+**R2 CORS policy** (bucket → Settings → CORS Policy), needed for uploads from the admin page:
+
+```json
+[
+  {
+    "AllowedOrigins": ["https://rwh-planner.vercel.app"],
+    "AllowedMethods": ["GET", "PUT", "HEAD"],
+    "AllowedHeaders": ["content-type"],
+    "ExposeHeaders": ["ETag"],
+    "MaxAgeSeconds": 3600
+  }
+]
+```
+
 ## Run locally
 
 ```bash

@@ -6,6 +6,9 @@
 //   GET  /api/rates/status        where the live rates came from, and any fetch error
 //   POST /api/calculate           full design calculation for the given inputs
 //   POST /api/report?lang=en|ur   A4 PDF design report (English or Urdu)
+//   GET  /api/videos              published training videos
+//   GET  /api/videos/:id/stream   redirect to the video file (signed R2 link)
+//   /api/admin/*                  video management (Authorization: Bearer ADMIN_TOKEN)
 import express from "express";
 import cors from "cors";
 import puppeteer from "puppeteer-core";
@@ -13,6 +16,7 @@ import { CITIES, ROOFS, TANKS, DEFAULTS, compute, normalizeInputs } from "./shar
 import { PLOTS, RATE_ITEMS, DOWNPIPE } from "./shared/rates.js";
 import { liveRates, ratesStatus } from "./rates-live.js";
 import { buildReportHTML, footerTemplate } from "./report.js";
+import { publicVideos, signedGet, isAdmin, adminConfigured, adminList, presignUpload, saveVideo, deleteVideo, reorder, storageReady } from "./media.js";
 
 const PORT = Number(process.env.PORT) || 8080;
 const ALLOWED = (process.env.ALLOWED_ORIGINS || "*").split(",").map(s => s.trim()).filter(Boolean);
@@ -59,7 +63,7 @@ function getBrowser() {
 
 app.get("/", (req, res) => res.json({ name: "RWH Planner API", docs: "/api/health" }));
 
-app.get("/api/health", (req, res) => res.json({ ok: true, service: "rwh-planner-api", time: new Date().toISOString() }));
+app.get("/api/health", (req, res) => res.json({ ok: true, service: "rwh-planner-api", storage: storageReady, admin: adminConfigured(), time: new Date().toISOString() }));
 
 app.get("/api/cities", (req, res) => {
   res.set("Cache-Control", "public, max-age=3600");
@@ -107,7 +111,41 @@ app.post("/api/report", limit, async (req, res) => {
   }
 });
 
+// ---------- training videos ----------
+const apiBase = req => `${req.protocol}://${req.get("host")}`;
+const wrap = fn => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
+
+app.get("/api/videos", wrap(async (req, res) => {
+  res.set("Cache-Control", "public, max-age=60");
+  res.json(await publicVideos(apiBase(req)));
+}));
+for (const kind of ["stream", "thumb"]) {
+  app.get(`/api/videos/:id/${kind}`, wrap(async (req, res) => {
+    const url = await signedGet(req.params.id, kind);
+    if (!url) return res.status(404).json({ error: "Not found" });
+    res.set("Cache-Control", "private, max-age=3000");
+    res.redirect(302, url);
+  }));
+}
+
+// admin: token check with a limit on failed attempts
+const fails = new Map();
+function admin(req, res, next) {
+  if (!adminConfigured()) return res.status(503).json({ error: "Admin is not configured. Set ADMIN_TOKEN on the server." });
+  const key = req.ip, now = Date.now();
+  const list = (fails.get(key) || []).filter(t => now - t < 600000);
+  if (list.length >= 10) return res.status(429).json({ error: "Too many failed attempts. Try again in 10 minutes." });
+  if (!isAdmin(req)) { list.push(now); fails.set(key, list); return res.status(401).json({ error: "Wrong admin token." }); }
+  next();
+}
+app.get("/api/admin/videos", admin, wrap(async (req, res) => { res.set("Cache-Control", "no-store"); res.json(await adminList()); }));
+app.post("/api/admin/uploads", admin, wrap(async (req, res) => res.json(await presignUpload(req.body || {}))));
+app.post("/api/admin/videos", admin, wrap(async (req, res) => res.json(await saveVideo(req.body || {}))));
+app.delete("/api/admin/videos/:id", admin, wrap(async (req, res) => { await deleteVideo(req.params.id); res.json({ ok: true }); }));
+app.post("/api/admin/order", admin, wrap(async (req, res) => { await reorder(Array.isArray(req.body?.ids) ? req.body.ids : []); res.json({ ok: true }); }));
+
 app.use((err, req, res, next) => {
+  if (err && err.status) return res.status(err.status).json({ error: err.message });
   if (err && err.message === "Origin not allowed") return res.status(403).json({ error: "Origin not allowed" });
   console.error(err);
   res.status(500).json({ error: "Server error" });

@@ -30,6 +30,9 @@
     <a role="tab" href="#cost" data-tab="cost" data-t="tabCost"></a>
     <a role="tab" href="#recharge" data-tab="recharge" data-t="tabRecharge"></a>
     <a role="tab" href="#report" data-tab="report" data-t="tabReport"></a>
+    <span class="tab-sep" aria-hidden="true"></span>
+    <a role="tab" href="#training" data-tab="training" data-t="tabTraining"></a>
+    <a role="tab" href="#guides" data-tab="guides" data-t="tabGuides"></a>
   </nav>
 </header>
 
@@ -200,16 +203,58 @@
         <p class="status" id="dlMsg" role="status"></p>
       </div>
       <div class="card">
+        <div class="card-h"><h2 data-t="shareTitle"></h2></div>
+        <p class="muted small" data-t="shareDesc"></p>
+        <div class="share-row"><input id="shareUrl" type="text" readonly aria-label="Share link"><button class="btn primary" type="button" id="copyShare" data-t="copyLink"></button></div>
+      </div>
+      <div class="card">
         <div class="card-h"><h2 data-t="summaryTitle"></h2><button class="btn" type="button" id="copy" data-t="copy"></button></div>
         <p class="muted small" id="copyMsg" data-t="summaryDesc"></p>
         <pre class="summary" id="summary"></pre>
       </div>
     </section>
 
+    <!-- TRAINING -->
+    <section class="view" id="v-training" role="tabpanel" hidden>
+      <div class="page-h">
+        <div><h1 data-t="trTitle"></h1><p class="muted" data-t="trSub"></p></div>
+      </div>
+      <div class="toolbar">
+        <div class="search"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="9" cy="9" r="5.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M13.2 13.2L17 17" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><input id="vSearch" type="search" autocomplete="off"></div>
+        <div class="chips" id="vCats" role="group"></div>
+      </div>
+      <p class="muted small" id="vCount"></p>
+      <div class="vgrid" id="vGrid"></div>
+      <div class="empty" id="vEmpty" hidden></div>
+    </section>
+
+    <!-- GUIDES -->
+    <section class="view" id="v-guides" role="tabpanel" hidden>
+      <div class="page-h">
+        <div><h1 data-t="gTitle"></h1><p class="muted" data-t="gSub"></p></div>
+      </div>
+      <div class="ggrid" id="gGrid"></div>
+      <div class="card">
+        <div class="card-h"><h2 data-t="calTitle"></h2></div>
+        <p class="muted small" data-t="calSub"></p>
+        <div class="cal" id="cal"></div>
+      </div>
+      <p class="fine" data-t="gNote"></p>
+    </section>
+
     <footer class="foot fine" data-t="footer"></footer>
   </main>
 </div>
 <div class="tip" id="rateChipTip" role="tooltip" hidden></div>
+<dialog class="player" id="player" aria-labelledby="pTitle">
+  <div class="player-frame" id="pFrame"></div>
+  <div class="player-body">
+    <div class="player-h"><h2 id="pTitle"></h2><button type="button" class="icon-btn" id="pClose" aria-label="Close"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></div>
+    <p class="muted small" id="pMeta"></p>
+    <p id="pDesc"></p>
+    <p class="small" id="pSrc"></p>
+  </div>
+</dialog>
 <script type="module" src="/src/main.js"></script>
 </body>
 </html>
