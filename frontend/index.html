@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="description" content="Size a rooftop rainwater harvesting system for any building in Pakistan. English and Urdu.">
+  <meta name="theme-color" content="#0a7c8c">
+  <title>RWH Planner</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <svg class="drop" viewBox="0 0 40 40" aria-hidden="true"><path d="M20 3C14 12 8 18.5 8 25a12 12 0 0 0 24 0c0-6.5-6-13-12-22z" fill="var(--accent)"/><path d="M14 26a6 6 0 0 0 6 6" stroke="var(--accent-ink)" stroke-width="2.4" fill="none" stroke-linecap="round"/></svg>
+      <div>
+        <h1 data-t="appName">RWH Planner</h1>
+        <p data-t="tagline"></p>
+      </div>
+    </div>
+    <div class="top-r">
+      <div class="formula" dir="ltr">Harvest (L) = Rain (mm) × Roof (m²) × C × η</div>
+      <div class="seg lang" role="group" aria-label="Language / زبان">
+        <button type="button" id="lnEn" lang="en">English</button>
+        <button type="button" id="lnUr" lang="ur">اردو</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="grid">
+    <aside class="panel" aria-label="Inputs">
+      <form id="f" autocomplete="off" onsubmit="return false">
+        <div class="step">
+          <div class="step-h"><span>1</span><b data-t="step1"></b></div>
+          <label for="city"><span data-t="city"></span>
+            <select id="city"></select>
+          </label>
+          <details id="rainBox">
+            <summary data-t="rainEdit"></summary>
+            <div class="months" id="months"></div>
+            <div class="rain-foot">
+              <p class="src" id="src"></p>
+              <button type="button" class="link" id="resetRain" data-t="resetRain"></button>
+            </div>
+          </details>
+        </div>
+
+        <div class="step">
+          <div class="step-h"><span>2</span><b data-t="step2"></b></div>
+          <label for="area"><span data-t="roofArea"></span>
+            <div class="inline">
+              <input id="area" type="number" min="1" step="1" inputmode="decimal">
+              <div class="seg" role="group">
+                <button type="button" id="uM2" data-t="m2"></button>
+                <button type="button" id="uFt" data-t="ft2"></button>
+              </div>
+            </div>
+          </label>
+          <label for="roof"><span data-t="roofSurface"></span>
+            <select id="roof"></select>
+          </label>
+          <p class="hint" data-t="roofHint"></p>
+        </div>
+
+        <div class="step">
+          <div class="step-h"><span>3</span><b data-t="step3"></b></div>
+          <div class="row">
+            <label for="people"><span data-t="people"></span><input id="people" type="number" min="1" step="1" inputmode="numeric"></label>
+            <label for="lpcd"><span data-t="lpcd"></span><input id="lpcd" type="number" min="1" step="5" inputmode="numeric"></label>
+          </div>
+          <p class="hint" data-t="useHint"></p>
+        </div>
+
+        <div class="step">
+          <div class="step-h"><span>4</span><b data-t="step4"></b></div>
+          <div class="row">
+            <label for="pTank"><span data-t="pTank"></span><input id="pTank" type="number" min="0" step="1" inputmode="decimal"></label>
+            <label for="pTanker"><span data-t="pTanker"></span><input id="pTanker" type="number" min="0" step="100" inputmode="decimal"></label>
+            <label for="pPlumb"><span data-t="pPlumb"></span><input id="pPlumb" type="number" min="0" step="1000" inputmode="decimal"></label>
+            <label for="pWell"><span data-t="pWell"></span><input id="pWell" type="number" min="0" step="1000" inputmode="decimal"></label>
+          </div>
+          <p class="hint" data-t="priceHint"></p>
+        </div>
+      </form>
+    </aside>
+
+    <main>
+      <section class="hero" aria-live="polite">
+        <div>
+          <div class="eyebrow" id="hCity"></div>
+          <div class="big"><span class="num" id="hHarvest">–</span> <small data-t="litresYear"></small></div>
+          <p data-t="heroLine"></p>
+        </div>
+        <ul>
+          <li><span data-t="equalTo"></span><b id="hTankers">–</b></li>
+          <li><span data-t="demandMet"></span><b id="hMet">–</b></li>
+          <li><span data-t="toGround"></span><b id="hRecharge">–</b></li>
+        </ul>
+      </section>
+
+      <section class="kpis">
+        <div class="kpi"><div class="l" data-t="annualRain"></div><div class="v num" id="kRain">–</div><div class="s" id="kRainS"></div></div>
+        <div class="kpi"><div class="l" data-t="usedFromTank"></div><div class="v num" id="kUsed">–</div><div class="s" data-t="litresPerYear"></div><span class="pill good" id="kUsedPill">–</span></div>
+        <div class="kpi"><div class="l" data-t="yearlySaving"></div><div class="v num" id="kSave">–</div><div class="s" data-t="pkrAtTanker"></div></div>
+        <div class="kpi"><div class="l" data-t="payback"></div><div class="v num" id="kPay">–</div><div class="s" id="kCost"></div></div>
+      </section>
+
+      <section class="panel">
+        <div class="card-h">
+          <h2 data-t="monthByMonth"></h2>
+          <div class="legend"><span><i class="sw rain"></i><span data-t="rainCollected"></span></span><span><i class="sw dem"></i><span data-t="householdDemand"></span></span></div>
+        </div>
+        <div class="axis-cap"><span></span><span data-t="litresPerMonth"></span></div>
+        <div class="chart" id="monthChart"></div>
+        <p class="note" id="monthNote"></p>
+      </section>
+
+      <section class="panel">
+        <div class="card-h">
+          <h2 data-t="tankSize"></h2>
+          <span class="reco" id="reco"></span>
+        </div>
+        <div class="tankrow">
+          <input id="tank" type="range" min="0" max="11" step="1" aria-label="Tank size">
+          <output id="tankOut" for="tank" class="num">–</output>
+        </div>
+        <div class="axis-cap"><span data-t="shareMet"></span><span id="tankAxis"></span></div>
+        <div class="chart" id="tankChart"></div>
+        <p class="note" data-t="tankNote"></p>
+      </section>
+
+      <div class="two">
+        <section class="panel">
+          <h2 class="h2s" data-t="rechargeWell"></h2>
+          <dl>
+            <dt data-t="overflowYear"></dt><dd id="rOver">–</dd>
+            <dt data-t="monsoonOverflow"></dt><dd id="rMonsoon">–</dd>
+            <dt data-t="designStorm"></dt><dd id="rStorm">–</dd>
+            <dt data-t="stormStorage"></dt><dd id="rStore">–</dd>
+          </dl>
+          <p class="wellbox"><span data-t="suggestedWell"></span><b id="rWell">–</b></p>
+          <p class="note" data-t="rechargeNote"></p>
+        </section>
+
+        <section class="panel">
+          <h2 class="h2s" data-t="costPayback"></h2>
+          <dl>
+            <dt data-t="cTank"></dt><dd id="cTank">–</dd>
+            <dt data-t="cPlumb"></dt><dd id="cPlumb">–</dd>
+            <dt data-t="cWell"></dt><dd id="cWell">–</dd>
+            <dt data-t="cTotal"></dt><dd id="cTotal" class="total">–</dd>
+            <dt data-t="cSave"></dt><dd id="cSave">–</dd>
+            <dt data-t="cPay"></dt><dd id="cPay" class="total">–</dd>
+          </dl>
+          <p class="note" data-t="costNote"></p>
+        </section>
+      </div>
+
+      <section class="panel">
+        <div class="card-h"><h2 data-t="areaTitle"></h2></div>
+        <div class="row narrow">
+          <label for="houses"><span data-t="houses"></span><input id="houses" type="number" min="1" step="50" inputmode="numeric"></label>
+        </div>
+        <div class="kpis area">
+          <div class="kpi"><div class="l" data-t="aHarvest"></div><div class="v num" id="aHarvest">–</div><div class="s" data-t="mlYear"></div></div>
+          <div class="kpi"><div class="l" data-t="aTrips"></div><div class="v num" id="aTrips">–</div><div class="s" data-t="tripsYear"></div></div>
+          <div class="kpi"><div class="l" data-t="aRecharge"></div><div class="v num" id="aRecharge">–</div><div class="s" data-t="mlYear"></div></div>
+          <div class="kpi"><div class="l" data-t="aStorm"></div><div class="v num" id="aStorm">–</div><div class="s" data-t="stormUnit"></div></div>
+        </div>
+      </section>
+
+      <section class="panel report">
+        <div class="card-h"><h2 data-t="reportTitle"></h2></div>
+        <p class="hint" data-t="reportDesc"></p>
+        <div class="btns">
+          <button class="btn" type="button" id="dlEn" data-t="dlEn"></button>
+          <button class="btn alt" type="button" id="dlUr" data-t="dlUr"></button>
+        </div>
+        <p class="status" id="dlMsg" role="status"></p>
+      </section>
+
+      <section class="panel">
+        <div class="card-h">
+          <h2 data-t="summaryTitle"></h2>
+          <button class="btn ghost" type="button" id="copy" data-t="copy"></button>
+        </div>
+        <p class="hint" id="copyMsg" data-t="copyHint"></p>
+        <pre class="summary" id="summary"></pre>
+      </section>
+
+      <footer data-t="footer"></footer>
+    </main>
+  </div>
+</div>
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>
