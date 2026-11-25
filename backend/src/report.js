@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { CITIES, ROOFS, TANKS, ETA, STORM_M, FT2 } from "./shared/calc.js";
+import { PLOTS, RATE_ITEMS } from "./shared/rates.js";
 import { T, MONTHS, t, fmt, round100, money } from "./shared/i18n.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -75,6 +76,27 @@ export function buildReportHTML(r, lang = "en") {
   const sum = a => a.reduce((x, y) => x + y, 0);
 
   const kv = arr => arr.map(([k, v]) => `<tr><th>${esc(k)}</th><td>${v}</td></tr>`).join("");
+  const itemMeta = Object.fromEntries(RATE_ITEMS.map(i => [i.key, i]));
+  const groupOrder = ["conv", "store", "well", "lab"];
+  const gName = { conv: "gConv", store: "gStore", well: "gWell", lab: "gLab" };
+  const unit = k => t(lang, "u_" + itemMeta[k].unit);
+  const qtyFmt = q => fmt(q, q % 1 ? 2 : 0);
+  const boqRows = groupOrder.map(g => {
+    const its = r.boq.items.filter(i => i.group === g);
+    return `<tr class="grp"><td colspan="4">${esc(t(lang, gName[g]))}</td><td>${fmt(r.boq.groups[g])}</td></tr>` +
+      its.map(i => {
+        const rt = r.rates[i.key];
+        const tag = rt.edited ? ` <span class="tag">${esc(t(lang, "editedTag"))}</span>` : rt.estimate ? ` <span class="tag">${esc(t(lang, "estimateTag"))}</span>` : "";
+        return `<tr><td>${esc(itemMeta[i.key][lang] || itemMeta[i.key].en)}${tag}</td><td>${qtyFmt(i.qty)}</td><td>${esc(unit(i.key))}</td><td>${fmt(i.rate)}</td><td>${fmt(i.amount)}</td></tr>`;
+      }).join("");
+  }).join("");
+  const seen = new Set();
+  const srcList = [...r.boq.items.map(i => i.key), "tanker"].map(k => {
+    const rt = r.rates[k]; const label = `${rt.src}${rt.asOf ? " (" + rt.asOf + ")" : ""}`;
+    if (rt.edited || seen.has(label)) return ""; seen.add(label);
+    return `<li><span class="ltr">${esc(label)}${rt.url ? " · " + esc(rt.url) : ""}</span></li>`;
+  }).join("") + (Object.values(r.rates).some(x => x.edited) ? `<li>${esc(t(lang, "editedTag"))}: ${esc(ur ? "صارف کی جانب سے درج کردہ نرخ" : "rate entered by the user")}</li>` : "");
+  const plot = PLOTS.find(p => p.key === S.plot);
 
   return `<!doctype html><html lang="${ur ? "ur" : "en"}" dir="${ur ? "rtl" : "ltr"}"><head><meta charset="utf-8">
 <style>
@@ -105,6 +127,12 @@ table.grid thead th{background:#0a7c8c;color:#fff;font-weight:600;font-size:${ur
 table.grid td{font-size:8.6pt}
 table.grid td:not(:first-child),table.grid th:not(:first-child){text-align:${ur ? "left" : "right"}}
 table.grid tfoot td{font-weight:700;border-top:2px solid #0a7c8c}
+table.boq tr.grp td{background:#eef5f6;font-weight:700;color:#0a7c8c}
+table.boq tfoot td{border-top:1px solid #cfdfe2}
+table.boq tfoot tr.grand td{border-top:2px solid #0a7c8c;color:#0a7c8c;font-size:9.6pt}
+table.boq tfoot td:first-child{text-align:${ur ? "right" : "left"}}
+.tag{display:inline-block;font-size:6.8pt;padding:0 5px;border-radius:6px;background:#fbf0dc;color:#8a5a00;line-height:1.6;vertical-align:middle}
+ol.src{font-size:7.4pt;line-height:${ur ? "1.8" : "1.45"};word-break:break-word}
 table.grid td:first-child{font-family:${ur ? '"Noto Nastaliq Urdu",sans-serif' : '"Inter",sans-serif'}}
 .chart{width:100%;height:auto;margin:6px 0 2px}
 .chart text{font-family:"Inter",sans-serif;font-size:10.5px;fill:#4a6470}
@@ -148,6 +176,8 @@ li{margin-bottom:${ur ? "0" : "3px"}}
 <h2>${esc(t(lang, "rSec1"))}</h2>
 <table class="kv">${kv([
   [t(lang, "rCity"), esc(cityName)],
+  ...(plot ? [[t(lang, "rPlot"), esc(plot[lang] || plot.en) + ` <span class="note">(1 ${ur ? "مرلہ" : "marla"} = ${fmt(S.marlaSize, 2)} ${esc(t(lang, "ft2"))})</span>`]] : []),
+  [t(lang, "rStoreys"), fmt(S.storeys)],
   [t(lang, "rAnnualRain"), esc(t(lang, "mm", { n: fmt(r.annualRain) })) + (r.edited ? " " + esc(t(lang, "edited")) : "")],
   [t(lang, "rRoofArea"), `${fmt(r.A)} ${esc(t(lang, "m2"))} <span class="note">(${fmt(r.A / FT2)} ${esc(t(lang, "ft2"))})</span>`],
   [t(lang, "rRoofSurface"), esc(roof[lang] || roof.en)],
@@ -202,17 +232,28 @@ ${tankChartSVG(r, lang)}</div>
 </section>
 
 <section>
-<h2>${esc(t(lang, "rSec5"))}</h2>
-<div class="two keep">
+<h2>${esc(t(lang, "rSec5b"))}</h2>
+<p class="note">${esc(t(lang, "pipeLine", { n: r.boq.outlets, size: ur ? "4 انچ (110 ملی میٹر)" : r.boq.downpipe.size, a: fmt(r.boq.roofFt2 / r.boq.outlets), cap: fmt(r.boq.downpipe.capacityFt2), mm: r.boq.downpipe.designMmH, src: r.boq.downpipe.src }))}
+${esc(t(lang, "storageLine", { n: r.boq.tanks, v: fmt(r.tank) }))} ${esc(t(lang, "wellLine", { w: wellText }))}</p>
+<table class="grid boq">
+<thead><tr><th>${esc(t(lang, "colItem"))}</th><th>${esc(t(lang, "colQty"))}</th><th>${esc(t(lang, "colUnit"))}</th><th>${esc(t(lang, "colRate"))}</th><th>${esc(t(lang, "colAmount"))}</th></tr></thead>
+<tbody>${boqRows}</tbody>
+<tfoot>
+<tr><td colspan="4">${esc(t(lang, "subtotal"))}</td><td>${fmt(r.boq.subtotal)}</td></tr>
+<tr><td colspan="4">${esc(t(lang, "contingency"))} (${fmt(r.boq.contingencyPct)}%)</td><td>${fmt(r.boq.contingency)}</td></tr>
+<tr class="grand"><td colspan="4">${esc(t(lang, "grandTotal"))}</td><td>${fmt(round100(r.boq.total))}</td></tr>
+</tfoot>
+</table>
+<div class="two keep" style="margin-top:8px">
 <table class="kv">${kv([
-  [t(lang, "cTank"), esc(money(lang, r.cost.tank))],
-  [t(lang, "cPlumb"), esc(money(lang, r.cost.plumb))],
-  [t(lang, "cWell"), esc(money(lang, r.cost.well))],
-  [t(lang, "cTotal"), esc(money(lang, r.cost.total))],
   [t(lang, "cSave"), esc(money(lang, r.cost.save))],
   [t(lang, "cPay"), pay ? esc(t(lang, "yearsN", { n: fmt(pay, 1) })) : esc(t(lang, "noSaving"))],
 ])}</table>
-<p class="note">${esc(t(lang, "costNote"))}</p>
+<p class="note">${esc(t(lang, "costNote"))} ${esc(t(lang, "costNote2"))}</p>
+</div>
+<div class="keep">
+<div class="note" style="margin-top:6px"><b>${esc(t(lang, "rSources"))}</b></div>
+<ol class="note src">${srcList}</ol>
 </div>
 </section>
 

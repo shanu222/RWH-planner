@@ -47,6 +47,13 @@
 
         <div class="step">
           <div class="step-h"><span>2</span><b data-t="step2"></b></div>
+          <div class="row">
+            <label for="plot"><span data-t="plotSize"></span><select id="plot"></select></label>
+            <label for="storeys"><span data-t="storeys"></span><input id="storeys" type="number" min="1" max="6" step="1" inputmode="numeric"></label>
+          </div>
+          <label for="marlaSize"><span data-t="marlaSize"></span>
+            <select id="marlaSize"><option value="225" data-t="marla225"></option><option value="272.25" data-t="marla272"></option></select>
+          </label>
           <label for="area"><span data-t="roofArea"></span>
             <div class="inline">
               <input id="area" type="number" min="1" step="1" inputmode="decimal">
@@ -59,6 +66,7 @@
           <label for="roof"><span data-t="roofSurface"></span>
             <select id="roof"></select>
           </label>
+          <p class="hint" data-t="plotHint"></p>
           <p class="hint" data-t="roofHint"></p>
         </div>
 
@@ -71,16 +79,6 @@
           <p class="hint" data-t="useHint"></p>
         </div>
 
-        <div class="step">
-          <div class="step-h"><span>4</span><b data-t="step4"></b></div>
-          <div class="row">
-            <label for="pTank"><span data-t="pTank"></span><input id="pTank" type="number" min="0" step="1" inputmode="decimal"></label>
-            <label for="pTanker"><span data-t="pTanker"></span><input id="pTanker" type="number" min="0" step="100" inputmode="decimal"></label>
-            <label for="pPlumb"><span data-t="pPlumb"></span><input id="pPlumb" type="number" min="0" step="1000" inputmode="decimal"></label>
-            <label for="pWell"><span data-t="pWell"></span><input id="pWell" type="number" min="0" step="1000" inputmode="decimal"></label>
-          </div>
-          <p class="hint" data-t="priceHint"></p>
-        </div>
       </form>
     </aside>
 
@@ -145,16 +143,29 @@
         <section class="panel">
           <h2 class="h2s" data-t="costPayback"></h2>
           <dl>
-            <dt data-t="cTank"></dt><dd id="cTank">–</dd>
-            <dt data-t="cPlumb"></dt><dd id="cPlumb">–</dd>
-            <dt data-t="cWell"></dt><dd id="cWell">–</dd>
-            <dt data-t="cTotal"></dt><dd id="cTotal" class="total">–</dd>
+            <dt data-t="totalCost"></dt><dd id="cTotal" class="total">–</dd>
             <dt data-t="cSave"></dt><dd id="cSave">–</dd>
             <dt data-t="cPay"></dt><dd id="cPay" class="total">–</dd>
           </dl>
           <p class="note" data-t="costNote"></p>
         </section>
       </div>
+
+      <section class="panel cost">
+        <div class="card-h"><h2 data-t="costTitle"></h2><span class="grand-pill num" id="boqTotalTop">–</span></div>
+        <p class="hint" data-t="costDesc"></p>
+        <ul class="specs" id="specs"></ul>
+        <div class="table-wrap"><table class="boq" id="boq"></table></div>
+        <div class="boq-foot">
+          <label for="contingency" class="cont"><span data-t="contingencyPct"></span><input id="contingency" type="number" min="0" max="50" step="1" inputmode="numeric"></label>
+          <p class="note" data-t="costNote2"></p>
+        </div>
+        <details id="ratesBox">
+          <summary><span data-t="ratesTitle"></span> · <span id="ratesStatus" class="rstatus"></span></summary>
+          <div class="table-wrap"><table class="rates" id="ratesTable"></table></div>
+          <div class="rates-foot"><button type="button" class="link" id="resetRates" data-t="resetRates"></button></div>
+        </details>
+      </section>
 
       <section class="panel">
         <div class="card-h"><h2 data-t="areaTitle"></h2></div>

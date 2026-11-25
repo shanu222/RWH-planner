@@ -8,11 +8,12 @@ import "@fontsource/noto-nastaliq-urdu/400.css";
 import "@fontsource/noto-nastaliq-urdu/700.css";
 import "./styles.css";
 
-import { CITIES, ROOFS, TANKS, DEFAULTS, FT2, STORM_M, compute, normalizeInputs } from "./shared/calc.js";
+import { CITIES, ROOFS, TANKS, DEFAULTS, FT2, STORM_M, compute, normalizeInputs, plotRoofArea } from "./shared/calc.js";
+import { RATE_ITEMS, PLOTS, PBS, PBS_CITY } from "./shared/rates.js";
 import { MONTHS, t, fmt, round100, money } from "./shared/i18n.js";
 
 const API = (import.meta.env.VITE_API_URL || "").replace(/\/+$/, "");
-const STORE = "rwh-planner-v2";
+const STORE = "rwh-planner-v3";
 const $ = id => document.getElementById(id);
 
 // ---------- state ----------
@@ -20,6 +21,8 @@ let S = { ...DEFAULTS, lang: "en" };
 try { const saved = JSON.parse(localStorage.getItem(STORE) || "null"); if (saved && typeof saved === "object") S = { ...S, ...saved }; } catch {}
 S = { ...normalizeInputs(S), lang: S.lang === "ur" ? "ur" : "en" };
 let lastResult = null;
+let published = null;   // live rates from the API for the current city
+let ratesMeta = null;   // { live, fetchedAt, … } or { offline: true }
 
 // ---------- build static controls ----------
 const citySel = $("city"), roofSel = $("roof"), monthsEl = $("months");
@@ -38,6 +41,9 @@ function renderSelects() {
   const L = S.lang;
   citySel.innerHTML = ""; for (const [k, c] of Object.entries(CITIES)) { const o = document.createElement("option"); o.value = k; o.textContent = c[L] || c.en; citySel.appendChild(o); }
   roofSel.innerHTML = ""; for (const [k, r] of Object.entries(ROOFS)) { const o = document.createElement("option"); o.value = k; o.textContent = `${r[L] || r.en} · C ${r.c.toFixed(2)}`; roofSel.appendChild(o); }
+  const plotSel = $("plot"); plotSel.innerHTML = "";
+  for (const p of PLOTS) { const o = document.createElement("option"); o.value = p.key; o.textContent = p[L] || p.en; plotSel.appendChild(o); }
+  const oc = document.createElement("option"); oc.value = "custom"; oc.textContent = t(L, "customArea"); plotSel.appendChild(oc);
 }
 
 function applyLang() {
@@ -50,6 +56,7 @@ function applyLang() {
   document.querySelectorAll(".mname").forEach((el, i) => { el.textContent = L === "ur" ? MONTHS.ur[i] : MONTHS.en[i]; });
   renderSelects();
   fillForm();
+  if (lastResult) renderRates(lastResult, true);
 }
 
 function fillForm() {
@@ -60,20 +67,40 @@ function fillForm() {
   $("src").innerHTML = `${t(S.lang, "source")}: <a href="${c.url}" target="_blank" rel="noopener">${t(S.lang, "climateTable", { city: c[S.lang] || c.en })}</a>, <span dir="ltr">${c.src}</span>.`;
   const a = $("area"); if (document.activeElement !== a) a.value = S.unit === "ft2" ? Math.round(S.area / FT2) : Math.round(S.area * 10) / 10;
   $("uM2").setAttribute("aria-pressed", S.unit === "m2"); $("uFt").setAttribute("aria-pressed", S.unit === "ft2");
-  for (const k of ["people", "lpcd", "pTank", "pTanker", "pPlumb", "pWell", "houses"]) { const el = $(k); if (document.activeElement !== el) el.value = S[k]; }
+  for (const k of ["people", "lpcd", "houses", "storeys", "contingency"]) { const el = $(k); if (document.activeElement !== el) el.value = S[k]; }
+  $("plot").value = S.plot; $("marlaSize").value = String(S.marlaSize); $("marlaSize").disabled = S.plot === "custom";
 }
 
 // ---------- events ----------
 $("lnEn").addEventListener("click", () => { S.lang = "en"; applyLang(); update(); });
 $("lnUr").addEventListener("click", () => { S.lang = "ur"; applyLang(); update(); });
-citySel.addEventListener("change", () => { S.city = citySel.value; S.rain = null; S.tank = null; fillForm(); update(); });
+citySel.addEventListener("change", () => { S.city = citySel.value; S.rain = null; S.tank = null; S.rates = null; fillForm(); update(); loadRates(); });
+$("plot").addEventListener("change", e => { S.plot = e.target.value; if (S.plot !== "custom") S.area = plotRoofArea(S.plot, S.marlaSize); S.tank = null; fillForm(); update(); });
+$("marlaSize").addEventListener("change", e => { S.marlaSize = Number(e.target.value); if (S.plot !== "custom") S.area = plotRoofArea(S.plot, S.marlaSize); S.tank = null; fillForm(); update(); });
 roofSel.addEventListener("change", () => { S.roof = roofSel.value; S.tank = null; update(); });
 $("resetRain").addEventListener("click", () => { S.rain = null; S.tank = null; fillForm(); update(); });
-$("area").addEventListener("input", e => { const v = parseFloat(e.target.value) || 0; S.area = S.unit === "ft2" ? v * FT2 : v; S.tank = null; update(); });
+$("area").addEventListener("input", e => { const v = parseFloat(e.target.value) || 0; S.area = S.unit === "ft2" ? v * FT2 : v; S.plot = "custom"; $("plot").value = "custom"; $("marlaSize").disabled = true; S.tank = null; update(); });
 $("uM2").addEventListener("click", () => { S.unit = "m2"; fillForm(); update(); });
 $("uFt").addEventListener("click", () => { S.unit = "ft2"; fillForm(); update(); });
-for (const k of ["people", "lpcd", "pTank", "pTanker", "pPlumb", "pWell", "houses"]) {
+for (const k of ["people", "lpcd", "houses", "storeys", "contingency"]) {
   $(k).addEventListener("input", e => { const v = Number(e.target.value); S[k] = Number.isFinite(v) && v >= 0 ? v : 0; if (k === "people" || k === "lpcd") S.tank = null; update(); });
+}
+$("resetRates").addEventListener("click", () => { S.rates = null; S.tank = null; renderRates(lastResult, true); update(); });
+
+// ---------- live rates ----------
+async function loadRates() {
+  const city = S.city;
+  if (!API) { published = null; ratesMeta = { builtIn: true }; update(); return; }
+  try {
+    const res = await fetch(`${API}/api/rates?city=${encodeURIComponent(city)}`);
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const data = await res.json();
+    if (city !== S.city) return;
+    published = data.rates; ratesMeta = data;
+  } catch (e) {
+    console.warn("rates:", e.message); published = null; ratesMeta = { offline: true };
+  }
+  renderRates(null, true); update();
 }
 $("tank").addEventListener("input", e => { S.tank = TANKS[+e.target.value]; update(); });
 
@@ -122,7 +149,7 @@ function tankChart(r) {
 
 // ---------- render ----------
 function update() {
-  const L = S.lang, r = compute(S);
+  const L = S.lang, r = compute(S, published);
   lastResult = r;
   const c = CITIES[S.city], cityName = c[L] || c.en;
   const litres = n => t(L, "litres", { n: fmt(round100(n)) });
@@ -154,7 +181,6 @@ function update() {
   $("rStore").textContent = t(L, "m3", { n: fmt(r.well.storm, 1) });
   $("rWell").textContent = wellText;
 
-  $("cTank").textContent = money(L, r.cost.tank); $("cPlumb").textContent = money(L, r.cost.plumb); $("cWell").textContent = money(L, r.cost.well);
   $("cTotal").textContent = money(L, r.cost.total); $("cSave").textContent = money(L, r.cost.save);
   $("cPay").textContent = pay ? t(L, "yearsN", { n: fmt(pay, 1) }) : t(L, "noSaving");
 
@@ -163,7 +189,8 @@ function update() {
   $("aRecharge").textContent = fmt(r.area.rechargeML, 1);
   $("aStorm").textContent = fmt(r.area.stormM3);
 
-  monthChart(r); tankChart(r);
+  monthChart(r); tankChart(r); renderBoq(r, wellText); renderRates(r);
+  const a = $("area"); if (document.activeElement !== a) a.value = S.unit === "ft2" ? Math.round(r.A / FT2) : Math.round(r.A * 10) / 10;
   $("summary").textContent = summaryText(r, L, cityName, wellText);
   try { localStorage.setItem(STORE, JSON.stringify(S)); } catch {}
 }
@@ -183,13 +210,71 @@ function summaryText(r, L, cityName, wellText) {
     line(t(L, "overflowYear"), t(L, "litres", { n: fmt(round100(r.sim.over)) })),
     line(t(L, "suggestedWell"), wellText),
     "",
-    line(t(L, "cTotal"), money(L, r.cost.total)),
+    line(t(L, "totalCost"), money(L, r.cost.total)),
     line(t(L, "cSave"), money(L, r.cost.save)),
     line(t(L, "cPay"), pay ? t(L, "yearsN", { n: fmt(pay, 1) }) : t(L, "noSaving")),
     "",
     t(L, "rDisclaimer"),
   ].join("\n");
 }
+
+// ---------- cost estimate ----------
+const META = Object.fromEntries(RATE_ITEMS.map(i => [i.key, i]));
+const GROUPS = [["conv", "gConv"], ["store", "gStore"], ["well", "gWell"], ["lab", "gLab"]];
+const esc = v => String(v).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const unitOf = k => t(S.lang, "u_" + META[k].unit);
+const itemName = k => META[k][S.lang] || META[k].en;
+
+function renderBoq(r, wellText) {
+  const L = S.lang, b = r.boq;
+  $("specs").innerHTML = [
+    t(L, "pipeLine", { n: b.outlets, size: L === "ur" ? "4 انچ (110 ملی میٹر)" : b.downpipe.size, a: fmt(b.roofFt2 / b.outlets), cap: fmt(b.downpipe.capacityFt2), mm: b.downpipe.designMmH, src: b.downpipe.src }),
+    t(L, "storageLine", { n: b.tanks, v: fmt(r.tank) }),
+    t(L, "wellLine", { w: wellText }),
+  ].map(x => `<li>${esc(x)}</li>`).join("");
+  const head = `<thead><tr><th>${t(L, "colItem")}</th><th>${t(L, "colQty")}</th><th>${t(L, "colUnit")}</th><th>${t(L, "colRate")}</th><th>${t(L, "colAmount")}</th></tr></thead>`;
+  const body = GROUPS.map(([g, key]) => `<tr class="grp"><td colspan="4">${t(L, key)}</td><td>${fmt(b.groups[g])}</td></tr>` +
+    b.items.filter(i => i.group === g).map(i => {
+      const rt = r.rates[i.key];
+      const tag = rt.edited ? `<span class="tag">${t(L, "editedTag")}</span>` : rt.estimate ? `<span class="tag est">${t(L, "estimateTag")}</span>` : "";
+      return `<tr><td>${esc(itemName(i.key))} ${tag}</td><td class="n">${fmt(i.qty, i.qty % 1 ? 2 : 0)}</td><td>${esc(unitOf(i.key))}</td><td class="n">${fmt(i.rate)}</td><td class="n">${fmt(i.amount)}</td></tr>`;
+    }).join("")).join("");
+  const foot = `<tfoot><tr><td colspan="4">${t(L, "subtotal")}</td><td class="n">${fmt(b.subtotal)}</td></tr>
+    <tr><td colspan="4">${t(L, "contingency")} (${fmt(b.contingencyPct)}%)</td><td class="n">${fmt(b.contingency)}</td></tr>
+    <tr class="grand"><td colspan="4">${t(L, "grandTotal")}</td><td class="n">${fmt(round100(b.total))}</td></tr></tfoot>`;
+  $("boq").innerHTML = head + `<tbody>${body}</tbody>` + foot;
+  $("boqTotalTop").textContent = money(L, b.total);
+}
+
+function renderRates(r, force) {
+  r = r || lastResult; if (!r) return;
+  const L = S.lang, tbl = $("ratesTable");
+  // status line
+  const st = $("ratesStatus");
+  if (ratesMeta && ratesMeta.live) { st.textContent = t(L, "ratesLive", { t: new Date(ratesMeta.fetchedAt).toLocaleString(L === "ur" ? "ur-PK" : "en-GB", { dateStyle: "medium", timeStyle: "short", numberingSystem: "latn" }) }); st.className = "rstatus live"; }
+  else if (ratesMeta && ratesMeta.offline) { st.textContent = t(L, "ratesOffline"); st.className = "rstatus off"; }
+  else { const pc = PBS_CITY[S.city]; st.textContent = t(L, "ratesBuiltIn", { m: PBS.asOf, city: pc }); st.className = "rstatus"; }
+  if (!force && tbl.contains(document.activeElement)) return; // don't redraw while typing
+  const keys = [...RATE_ITEMS.map(i => i.key)];
+  tbl.innerHTML = `<thead><tr><th>${t(L, "colItem")}</th><th>${t(L, "colUnit")}</th><th>${t(L, "colRate")}</th><th>${t(L, "source")}</th></tr></thead><tbody>` +
+    keys.map(k => {
+      const rt = r.rates[k];
+      const src = rt.url ? `<a href="${esc(rt.url)}" target="_blank" rel="noopener">${esc(rt.src)}</a>` : esc(rt.src);
+      const tags = (rt.estimate ? `<span class="tag est">${t(L, "estimateTag")}</span>` : "") + (rt.live ? `<span class="tag live">live</span>` : "");
+      return `<tr><td>${esc(itemName(k))}</td><td>${esc(unitOf(k))}</td>
+        <td><input type="number" min="0" step="any" inputmode="decimal" data-rate="${k}" value="${Math.round(rt.rate * 100) / 100}" aria-label="${esc(itemName(k))}"${rt.edited ? ' class="edited"' : ""}></td>
+        <td class="src"><span dir="ltr">${src}</span> <span class="asof">${t(L, "asOf", { d: esc(rt.asOf || "–") })}</span> ${tags}</td></tr>`;
+    }).join("") + "</tbody>";
+}
+$("ratesTable").addEventListener("input", e => {
+  const k = e.target.dataset.rate; if (!k) return;
+  const v = Number(e.target.value);
+  S.rates = { ...(S.rates || {}) };
+  if (e.target.value === "" || !Number.isFinite(v)) delete S.rates[k]; else S.rates[k] = Math.max(0, v);
+  e.target.classList.add("edited");
+  if (k === "tank" || k === "tanker") S.tank = null;
+  update();
+});
 
 // ---------- copy summary ----------
 $("copy").addEventListener("click", () => {
@@ -234,4 +319,5 @@ $("dlUr").addEventListener("click", () => download("ur"));
 // ---------- boot ----------
 applyLang();
 update();
+loadRates();
 let rz; addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(update, 150); });

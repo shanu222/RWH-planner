@@ -1,9 +1,10 @@
 {
-  "name": "rwh-planner",
-  "private": true,
-  "description": "Rooftop rainwater harvesting planner for Pakistan (English and Urdu). Frontend on Vercel, API on Railway.",
-  "scripts": {
-    "sync": "node scripts/sync-shared.mjs",
-    "check": "node scripts/sync-shared.mjs --check"
-  }
+    "name": "rwh-planner",
+    "private": true,
+    "type": "module",
+    "description": "Rooftop rainwater harvesting planner for Pakistan (English and Urdu). Frontend on Vercel, API on Railway.",
+    "scripts": {
+        "sync": "node scripts/sync-shared.mjs",
+        "check": "node scripts/sync-shared.mjs --check"
+    }
 }

@@ -1,13 +1,16 @@
 // RWH Planner API – runs on Railway.
 // Endpoints:
 //   GET  /api/health              service status
-//   GET  /api/cities              rainfall data, roof types and tank sizes
+//   GET  /api/cities              rainfall data, roof types, tank sizes, plot sizes
+//   GET  /api/rates?city=…         live published rates for the cost estimate (with sources)
 //   POST /api/calculate           full design calculation for the given inputs
 //   POST /api/report?lang=en|ur   A4 PDF design report (English or Urdu)
 import express from "express";
 import cors from "cors";
 import puppeteer from "puppeteer-core";
 import { CITIES, ROOFS, TANKS, DEFAULTS, compute, normalizeInputs } from "./shared/calc.js";
+import { PLOTS, RATE_ITEMS, DOWNPIPE } from "./shared/rates.js";
+import { liveRates } from "./rates-live.js";
 import { buildReportHTML, footerTemplate } from "./report.js";
 
 const PORT = Number(process.env.PORT) || 8080;
@@ -59,18 +62,26 @@ app.get("/api/health", (req, res) => res.json({ ok: true, service: "rwh-planner-
 
 app.get("/api/cities", (req, res) => {
   res.set("Cache-Control", "public, max-age=3600");
-  res.json({ cities: CITIES, roofs: ROOFS, tanks: TANKS, defaults: DEFAULTS });
+  res.json({ cities: CITIES, roofs: ROOFS, tanks: TANKS, plots: PLOTS, rateItems: RATE_ITEMS, downpipe: DOWNPIPE, defaults: DEFAULTS });
 });
 
-app.post("/api/calculate", (req, res) => {
-  const r = compute(normalizeInputs(req.body || {}));
-  res.json(r);
+app.get("/api/rates", async (req, res) => {
+  const city = CITIES[req.query.city] ? req.query.city : "islamabad";
+  res.set("Cache-Control", "public, max-age=300");
+  res.json(await liveRates(city));
+});
+
+app.post("/api/calculate", async (req, res) => {
+  const inputs = normalizeInputs(req.body || {});
+  const { rates } = await liveRates(inputs.city);
+  res.json(compute(inputs, rates));
 });
 
 app.post("/api/report", limit, async (req, res) => {
   const lang = (req.query.lang || req.body?.lang) === "ur" ? "ur" : "en";
   const inputs = normalizeInputs(req.body?.inputs || req.body || {});
-  const r = compute(inputs);
+  const { rates } = await liveRates(inputs.city);
+  const r = compute(inputs, rates);
   let page;
   try {
     const browser = await getBrowser();

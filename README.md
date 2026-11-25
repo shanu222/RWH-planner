@@ -11,18 +11,19 @@ Built by Resilience Technologies Labs.
 | --- | --- | --- | --- |
 | Web app | `frontend/` | Vercel | Vite single-page app. All calculations run instantly in the browser. English/Urdu switch with right-to-left Nastaliq layout. |
 | API | `backend/` | Railway (Docker) | Express API. Same calculation engine, plus PDF report generation with headless Chromium. |
-| Shared code | `shared/` | – | `calc.js` (engine, rainfall data) and `i18n.js` (English + Urdu text). Copied into both apps by `npm run sync`. |
+| Shared code | `shared/` | – | `calc.js` (engine, rainfall data), `rates.js` (published rates, plot sizes, BOQ items) and `i18n.js` (English + Urdu text). Copied into both apps by `npm run sync`. |
 
 ### API
 
 | Method | Path | Description |
 | --- | --- | --- |
 | GET | `/api/health` | Service status |
-| GET | `/api/cities` | Rainfall normals, roof types, tank sizes, defaults |
+| GET | `/api/cities` | Rainfall normals, roof types, tank sizes, plot sizes, rate items, defaults |
+| GET | `/api/rates?city=` | Current rates for the cost estimate (rate sheet merged over published rates), with sources |
 | POST | `/api/calculate` | Body: design inputs → full results (JSON) |
 | POST | `/api/report?lang=en\|ur` | Body: `{ "inputs": { … } }` → A4 PDF design report |
 
-Design inputs: `city`, `area` (m²), `roof` (`rcc`, `metal`, `tiles`, `paved`), `people`, `lpcd`, `pTank`, `pTanker`, `pPlumb`, `pWell`, `houses`, optional `tank` (litres) and `rain` (12 monthly values in mm).
+Design inputs: `city`, `plot` (`3m`, `5m`, `7m`, `10m`, `1k`, `2k` or `custom`), `marlaSize` (225 or 272.25), `storeys`, `area` (m², used when `plot` is `custom`), `roof` (`rcc`, `metal`, `tiles`, `paved`), `people`, `lpcd`, `houses`, `contingency` (%), optional `rates` (`{ key: PKR }` overrides), `tank` (litres) and `rain` (12 monthly values in mm).
 
 ## Deploy
 
@@ -37,6 +38,8 @@ Design inputs: `city`, `area` (m²), `roof` (`rcc`, `metal`, `tiles`, `paved`), 
 | `ALLOWED_ORIGINS` | Your Vercel URL, e.g. `https://rwh-planner.vercel.app` (comma-separate several; `https://rwh-planner-*.vercel.app` allows preview builds) |
 | `REPORT_RATE_LIMIT` | `20` (PDF reports per visitor per 10 minutes) |
 | `NODE_ENV` | `production` |
+| `RATES_SOURCE_URL` | Optional. CSV link of your published rate sheet (see **Live rates** below) |
+| `RATES_CACHE_MINUTES` | `360` (how often the rate sheet is re-read) |
 
 Railway sets `PORT` itself. `PUPPETEER_EXECUTABLE_PATH` is already set in the Docker image.
 
@@ -53,6 +56,16 @@ Railway sets `PORT` itself. `PUPPETEER_EXECUTABLE_PATH` is already set in the Do
 | `VITE_API_URL` | Your Railway URL, e.g. `https://rwh-planner-api.up.railway.app` (no trailing slash) |
 
 4. Deploy. Then put the final Vercel URL into Railway's `ALLOWED_ORIGINS` and redeploy the backend.
+
+## Cost estimate and live rates
+
+The app prices a bill of quantities for the chosen plot: 4" uPVC downpipes and elbows, first-flush filters, 2,000 L plastic tanks, the recharge well (bajri, sand, bricks, cement) and plumber, mason and labour days, plus an editable contingency.
+
+Rates come in three layers, each overriding the one before:
+
+1. **Published rates bundled in the app**, with source and date: PBS *Monthly Review on Price Indices*, Annex-III city-wise construction prices (Sept 2026); Popular Pipes price list; retail tank and pipe prices; KWSC tanker tariff. The first-flush filter is marked as an estimate.
+2. **Your rate sheet** (live). Import `rates-template.csv` into Google Sheets, update the `rate` column monthly (e.g. from each new PBS release or supplier list), then **File → Share → Publish to web → Comma-separated values (.csv)**. Put that link in Railway's `RATES_SOURCE_URL`. Leave `city` blank for all cities, or name a city to override it there only. Changes show up within `RATES_CACHE_MINUTES`.
+3. **The user's own edits** in the "Rates used" table on the page (saved in their browser, included in the PDF and marked as edited).
 
 ## Run locally
 

@@ -1,6 +1,7 @@
 // RWH Planner – shared calculation engine.
 // This file is the single source of truth. `npm run sync` (repo root) copies it
 // into frontend/src/shared and backend/src/shared. Edit it here only.
+import { RATE_ITEMS, RATE_KEYS, defaultRates, PLOTS, DOWNPIPE } from "./rates.js";
 
 // Monthly rainfall normals (mm), Jan–Dec, from each city's Wikipedia climate table.
 export const CITIES = {
@@ -32,10 +33,21 @@ export const FT2 = 0.09290304;   // m² per sq ft
 export const WELL_D = 1.2;       // recharge well diameter (m)
 export const WELL_MAX_DEPTH = 6; // split into more wells beyond this depth (m)
 
+export const TANK_UNIT = 2000;    // litres per plastic tank in the cost estimate
+export const DIG_CFT_PER_DAY = 60; // manual excavation output of one labourer (cft/day)
+export const PAYBACK_YEARS = 10;   // each added tank must repay itself in water saved within this many years
+
 export const DEFAULTS = {
-  city: "islamabad", area: 150, unit: "m2", roof: "rcc", people: 6, lpcd: 40,
-  pTank: 30, pTanker: 3000, pPlumb: 25000, pWell: 60000, houses: 500, tank: null, rain: null,
+  city: "islamabad", plot: "5m", marlaSize: 225, storeys: 2, area: null, unit: "m2", roof: "rcc", people: 6, lpcd: 40,
+  houses: 500, tank: null, rain: null, contingency: 10, rates: null,
 };
+
+// Roof area (m²) for a plot preset.
+export function plotRoofArea(plotKey, marlaSize = 225) {
+  const p = PLOTS.find(x => x.key === plotKey);
+  if (!p) return null;
+  return p.marla * marlaSize * p.cover * FT2;
+}
 
 const num = (v, lo, hi, d) => {
   const n = Number(v);
@@ -50,16 +62,22 @@ export function normalizeInputs(raw = {}) {
   let rain = null;
   if (Array.isArray(raw.rain) && raw.rain.length === 12) rain = raw.rain.map(v => num(v, 0, 5000, 0));
   const tank = TANKS.includes(Number(raw.tank)) ? Number(raw.tank) : null;
+  const plot = PLOTS.some(p => p.key === raw.plot) ? raw.plot : (raw.plot === "custom" ? "custom" : DEFAULTS.plot);
+  const marlaSize = Number(raw.marlaSize) === 272.25 ? 272.25 : 225;
+  const presetArea = plot === "custom" ? null : plotRoofArea(plot, marlaSize);
+  const area = presetArea ?? num(raw.area, 1, 100000, 150);
+  let rates = null;
+  if (raw.rates && typeof raw.rates === "object") {
+    rates = {};
+    for (const k of RATE_KEYS) if (raw.rates[k] != null && raw.rates[k] !== "") rates[k] = num(raw.rates[k], 0, 1e8, 0);
+  }
   return {
-    city, roof, rain, tank,
+    city, roof, rain, tank, plot, marlaSize, rates, area,
+    storeys: Math.round(num(raw.storeys, 1, 6, DEFAULTS.storeys)),
+    contingency: num(raw.contingency, 0, 50, DEFAULTS.contingency),
     unit: raw.unit === "ft2" ? "ft2" : "m2",
-    area: num(raw.area, 1, 100000, DEFAULTS.area),
     people: Math.round(num(raw.people, 1, 1000, DEFAULTS.people)),
     lpcd: num(raw.lpcd, 1, 1000, DEFAULTS.lpcd),
-    pTank: num(raw.pTank, 0, 1e7, DEFAULTS.pTank),
-    pTanker: num(raw.pTanker, 0, 1e7, DEFAULTS.pTanker),
-    pPlumb: num(raw.pPlumb, 0, 1e9, DEFAULTS.pPlumb),
-    pWell: num(raw.pWell, 0, 1e9, DEFAULTS.pWell),
     houses: Math.round(num(raw.houses, 1, 1e6, DEFAULTS.houses)),
   };
 }
@@ -81,8 +99,54 @@ export function simulate(inflow, demand, V) {
   return res;
 }
 
+// Resolve the rates used: published rates for the city (or `published`, e.g. live rates
+// from the API), with any user-edited values on top.
+export function resolveRates(S, published) {
+  const fallback = defaultRates(S.city);
+  const out = {};
+  for (const k of RATE_KEYS) {
+    const b = (published && published[k]) || fallback[k];
+    const edited = !!(S.rates && S.rates[k] != null);
+    out[k] = { ...b, rate: edited ? S.rates[k] : b.rate, edited };
+  }
+  return out;
+}
+
+// Simple bill of quantities for the selected design.
+export function costEstimate(S, d, rates) {
+  const R = k => rates[k].rate;
+  const roofFt2 = d.A / FT2;
+  const outlets = Math.max(1, Math.ceil(roofFt2 / DOWNPIPE.maxPerOutletFt2));
+  const pipeFt = Math.ceil(outlets * (S.storeys * 10.5 + 1.5 + 15) + 15);
+  const elbows = outlets * 3 + 2;
+  const filters = Math.max(1, Math.ceil(outlets / 2));
+  const tanks = Math.max(1, Math.ceil(d.tank / TANK_UNIT));
+  const wellCft = d.well.wells * Math.PI * (WELL_D / 2) ** 2 * d.well.depth * 35.3147;
+  const bajri = (wellCft * 0.6) / 100, sand = (wellCft * 0.2) / 100;
+  const bricks = (d.well.wells * 500) / 1000, cement = d.well.wells * 4;
+  const plumberDays = Math.ceil(1 + outlets * 0.5);
+  const masonDays = Math.ceil(d.well.wells * 1.5);
+  const labourDays = Math.ceil(wellCft / DIG_CFT_PER_DAY + d.well.wells);
+  const line = (key, group, qty) => ({ key, group, qty, rate: R(key), amount: qty * R(key) });
+  const items = [
+    line("pipe4", "conv", pipeFt), line("elbow4", "conv", elbows), line("filter", "conv", filters),
+    line("tank", "store", tanks),
+    line("bajri", "well", bajri), line("sand", "well", sand), line("bricks", "well", bricks), line("cement", "well", cement),
+    line("plumber", "lab", plumberDays), line("mason", "lab", masonDays), line("labour", "lab", labourDays),
+  ];
+  const subtotal = items.reduce((a, b) => a + b.amount, 0);
+  const contingency = (subtotal * S.contingency) / 100;
+  const total = subtotal + contingency;
+  const groups = {};
+  for (const it of items) groups[it.group] = (groups[it.group] || 0) + it.amount;
+  const capacityOk = roofFt2 / outlets <= DOWNPIPE.capacityFt2;
+  return { items, groups, subtotal, contingencyPct: S.contingency, contingency, total,
+    outlets, pipeFt, elbows, filters, tanks, tankUnit: TANK_UNIT, wellCft, roofFt2, capacityOk, downpipe: DOWNPIPE };
+}
+
 // Full design calculation. `inputs` should come from normalizeInputs().
-export function compute(inputs) {
+// `published` = live rates from the API (optional).
+export function compute(inputs, published) {
   const S = normalizeInputs(inputs);
   const rain = S.rain || CITIES[S.city].mm.slice();
   const A = S.area, C = ROOFS[S.roof].c;
@@ -93,9 +157,18 @@ export function compute(inputs) {
   const annualRain = rain.reduce((a, b) => a + b, 0);
 
   const curve = TANKS.map(V => ({ V, ...simulate(inflow, demand, V) }));
-  const best = curve[curve.length - 1].used;
-  let recIdx = curve.findIndex(c => c.used >= 0.9 * best);
-  if (recIdx < 0) recIdx = curve.length - 1;
+  const rates = resolveRates(S, published);
+
+  // Economic tank size: grow the tank step by step while the extra water from each step,
+  // valued at the tanker price, repays that step's tank cost within PAYBACK_YEARS.
+  const waterPerL = rates.tanker.rate / GAL;
+  const tankPerL = rates.tank.rate / TANK_UNIT;
+  let recIdx = 0;
+  for (let i = 1; i < curve.length; i++) {
+    const gain = curve[i].used - curve[i - 1].used;
+    const stepCost = (curve[i].V - curve[i - 1].V) * tankPerL;
+    if (gain * waterPerL * PAYBACK_YEARS >= stepCost) recIdx = i; else break;
+  }
   const recommended = TANKS[recIdx];
   const tank = S.tank ?? recommended;
   const sim = simulate(inflow, demand, tank);
@@ -108,11 +181,6 @@ export function compute(inputs) {
   const wells = Math.max(1, Math.ceil(depthOne / WELL_MAX_DEPTH));
   const wellDepth = Math.max(1.5, depthOne / wells);
 
-  // cost
-  const tankCost = tank * S.pTank;
-  const total = tankCost + S.pPlumb + S.pWell;
-  const save = (sim.used / GAL) * S.pTanker;
-  const payback = save > 0 ? total / save : null;
 
   // area scale
   const H = S.houses;
@@ -124,12 +192,17 @@ export function compute(inputs) {
     stormM3: storm * H,
   };
 
+  const well = { storm, wells, depth: wellDepth, diameter: WELL_D, overflow: sim.over, monsoon: sim.overM[6] + sim.overM[7] };
+  const boq = costEstimate(S, { A, tank, well }, rates);
+  const save = (sim.used / GAL) * rates.tanker.rate;
+  const payback = save > 0 ? boq.total / save : null;
+
   return {
     inputs: S, rain, edited: !!S.rain, annualRain, A, C, inflow, demand, harvest, dem,
     curve: curve.map(c => ({ V: c.V, used: c.used, pct: dem > 0 ? (100 * c.used) / dem : 0 })),
     recIdx, recommended, tank, sim, met,
-    well: { storm, wells, depth: wellDepth, diameter: WELL_D, overflow: sim.over, monsoon: sim.overM[6] + sim.overM[7] },
-    cost: { tank: tankCost, plumb: S.pPlumb, well: S.pWell, total, save, payback },
+    well, rates, boq,
+    cost: { total: boq.total, save, payback },
     area,
     tankersEquivalent: harvest / GAL,
   };
