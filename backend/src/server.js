@@ -2,7 +2,8 @@
 // Endpoints:
 //   GET  /api/health              service status
 //   GET  /api/cities              rainfall data, roof types, tank sizes, plot sizes
-//   GET  /api/rates?city=…         live published rates for the cost estimate (with sources)
+//   GET  /api/rates?city=…         live rates for the cost estimate (PBS monthly file + rate sheet), with sources
+//   GET  /api/rates/status        where the live rates came from, and any fetch error
 //   POST /api/calculate           full design calculation for the given inputs
 //   POST /api/report?lang=en|ur   A4 PDF design report (English or Urdu)
 import express from "express";
@@ -10,7 +11,7 @@ import cors from "cors";
 import puppeteer from "puppeteer-core";
 import { CITIES, ROOFS, TANKS, DEFAULTS, compute, normalizeInputs } from "./shared/calc.js";
 import { PLOTS, RATE_ITEMS, DOWNPIPE } from "./shared/rates.js";
-import { liveRates } from "./rates-live.js";
+import { liveRates, ratesStatus } from "./rates-live.js";
 import { buildReportHTML, footerTemplate } from "./report.js";
 
 const PORT = Number(process.env.PORT) || 8080;
@@ -70,6 +71,8 @@ app.get("/api/rates", async (req, res) => {
   res.set("Cache-Control", "public, max-age=300");
   res.json(await liveRates(city));
 });
+
+app.get("/api/rates/status", (req, res) => { res.set("Cache-Control", "no-store"); res.json(ratesStatus()); });
 
 app.post("/api/calculate", async (req, res) => {
   const inputs = normalizeInputs(req.body || {});

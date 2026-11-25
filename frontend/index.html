@@ -3,206 +3,213 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="description" content="Size a rooftop rainwater harvesting system for any building in Pakistan. English and Urdu.">
-  <meta name="theme-color" content="#0a7c8c">
+  <meta name="description" content="Design a rooftop rainwater harvesting system for any building in Pakistan: tank size, recharge well, bill of quantities and a PDF report in English and Urdu.">
+  <meta name="theme-color" content="#ffffff">
   <title>RWH Planner</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 </head>
 <body>
-<div class="wrap">
-  <header class="top">
-    <div class="brand">
-      <svg class="drop" viewBox="0 0 40 40" aria-hidden="true"><path d="M20 3C14 12 8 18.5 8 25a12 12 0 0 0 24 0c0-6.5-6-13-12-22z" fill="var(--accent)"/><path d="M14 26a6 6 0 0 0 6 6" stroke="var(--accent-ink)" stroke-width="2.4" fill="none" stroke-linecap="round"/></svg>
-      <div>
-        <h1 data-t="appName">RWH Planner</h1>
-        <p data-t="tagline"></p>
-      </div>
-    </div>
-    <div class="top-r">
-      <div class="formula" dir="ltr">Harvest (L) = Rain (mm) × Roof (m²) × C × η</div>
-      <div class="seg lang" role="group" aria-label="Language / زبان">
-        <button type="button" id="lnEn" lang="en">English</button>
+<header class="appbar">
+  <div class="bar container">
+    <a class="brand" href="#overview" aria-label="RWH Planner">
+      <svg class="mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--brand)"/><path d="M16 6.5c-3.6 5-6.5 8.6-6.5 12.1a6.5 6.5 0 0 0 13 0c0-3.5-2.9-7.1-6.5-12.1z" fill="#fff"/><path d="M12.8 19.4a3.3 3.3 0 0 0 3.2 3" stroke="var(--brand)" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>
+      <span class="brand-t"><b data-t="appName">RWH Planner</b><small data-t="tagline"></small></span>
+    </a>
+    <div class="bar-r">
+      <button type="button" class="rate-chip" id="rateChip" aria-describedby="rateChipTip"><i class="dot"></i><span id="rateChipText">…</span></button>
+      <div class="seg" role="group" aria-label="Language / زبان">
+        <button type="button" id="lnEn" lang="en">EN</button>
         <button type="button" id="lnUr" lang="ur">اردو</button>
       </div>
+      <a class="btn primary hide-sm" href="#report" data-t="downloadReport"></a>
     </div>
-  </header>
+  </div>
+  <nav class="tabs container" role="tablist" aria-label="Sections">
+    <a role="tab" href="#overview" data-tab="overview" data-t="tabOverview"></a>
+    <a role="tab" href="#water" data-tab="water" data-t="tabWater"></a>
+    <a role="tab" href="#cost" data-tab="cost" data-t="tabCost"></a>
+    <a role="tab" href="#recharge" data-tab="recharge" data-t="tabRecharge"></a>
+    <a role="tab" href="#report" data-tab="report" data-t="tabReport"></a>
+  </nav>
+</header>
 
-  <div class="grid">
-    <aside class="panel" aria-label="Inputs">
+<div class="layout container">
+  <aside class="side">
+    <details class="card inputs" id="inputsBox" open>
+      <summary class="inputs-h"><span><b data-t="inputsTitle"></b><small data-t="inputsSub"></small></span><svg class="chev" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 8l5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></summary>
       <form id="f" autocomplete="off" onsubmit="return false">
-        <div class="step">
-          <div class="step-h"><span>1</span><b data-t="step1"></b></div>
-          <label for="city"><span data-t="city"></span>
-            <select id="city"></select>
-          </label>
-          <details id="rainBox">
+        <fieldset>
+          <legend data-t="step1"></legend>
+          <label class="field" for="city"><span data-t="city"></span><select id="city"></select></label>
+          <details class="sub" id="rainBox">
             <summary data-t="rainEdit"></summary>
             <div class="months" id="months"></div>
-            <div class="rain-foot">
-              <p class="src" id="src"></p>
-              <button type="button" class="link" id="resetRain" data-t="resetRain"></button>
-            </div>
+            <p class="fine" id="src"></p>
+            <button type="button" class="link" id="resetRain" data-t="resetRain"></button>
           </details>
-        </div>
+        </fieldset>
 
-        <div class="step">
-          <div class="step-h"><span>2</span><b data-t="step2"></b></div>
-          <div class="row">
-            <label for="plot"><span data-t="plotSize"></span><select id="plot"></select></label>
-            <label for="storeys"><span data-t="storeys"></span><input id="storeys" type="number" min="1" max="6" step="1" inputmode="numeric"></label>
+        <fieldset>
+          <legend data-t="step2"></legend>
+          <div class="row2">
+            <label class="field" for="plot"><span data-t="plotSize"></span><select id="plot"></select></label>
+            <label class="field" for="storeys"><span data-t="storeys"></span><input id="storeys" type="number" min="1" max="6" step="1" inputmode="numeric"></label>
           </div>
-          <label for="marlaSize"><span data-t="marlaSize"></span>
+          <label class="field" for="marlaSize"><span data-t="marlaSize"></span>
             <select id="marlaSize"><option value="225" data-t="marla225"></option><option value="272.25" data-t="marla272"></option></select>
           </label>
-          <label for="area"><span data-t="roofArea"></span>
-            <div class="inline">
+          <label class="field" for="area"><span data-t="roofArea"></span>
+            <div class="input-group">
               <input id="area" type="number" min="1" step="1" inputmode="decimal">
-              <div class="seg" role="group">
-                <button type="button" id="uM2" data-t="m2"></button>
-                <button type="button" id="uFt" data-t="ft2"></button>
-              </div>
+              <div class="seg sm" role="group"><button type="button" id="uM2" data-t="m2"></button><button type="button" id="uFt" data-t="ft2"></button></div>
             </div>
           </label>
-          <label for="roof"><span data-t="roofSurface"></span>
-            <select id="roof"></select>
-          </label>
-          <p class="hint" data-t="plotHint"></p>
-          <p class="hint" data-t="roofHint"></p>
-        </div>
+          <p class="fine" data-t="plotHint"></p>
+          <label class="field" for="roof"><span data-t="roofSurface"></span><select id="roof"></select></label>
+        </fieldset>
 
-        <div class="step">
-          <div class="step-h"><span>3</span><b data-t="step3"></b></div>
-          <div class="row">
-            <label for="people"><span data-t="people"></span><input id="people" type="number" min="1" step="1" inputmode="numeric"></label>
-            <label for="lpcd"><span data-t="lpcd"></span><input id="lpcd" type="number" min="1" step="5" inputmode="numeric"></label>
+        <fieldset>
+          <legend data-t="step3"></legend>
+          <div class="row2 eq">
+            <label class="field" for="people"><span data-t="people"></span><input id="people" type="number" min="1" step="1" inputmode="numeric"></label>
+            <label class="field" for="lpcd"><span data-t="lpcd"></span><input id="lpcd" type="number" min="1" step="5" inputmode="numeric"></label>
           </div>
-          <p class="hint" data-t="useHint"></p>
-        </div>
-
+          <p class="fine" data-t="useHint"></p>
+        </fieldset>
+        <div class="side-foot"><button type="button" class="link muted" id="resetAll" data-t="resetAll"></button></div>
       </form>
-    </aside>
+    </details>
+  </aside>
 
-    <main>
-      <section class="hero" aria-live="polite">
-        <div>
-          <div class="eyebrow" id="hCity"></div>
-          <div class="big"><span class="num" id="hHarvest">–</span> <small data-t="litresYear"></small></div>
-          <p data-t="heroLine"></p>
+  <main id="main">
+    <!-- OVERVIEW -->
+    <section class="view" id="v-overview" role="tabpanel">
+      <div class="page-h">
+        <div><h1 data-t="ovTitle"></h1><p class="muted" id="ovSub"></p></div>
+      </div>
+      <div class="card stats">
+        <div class="stat"><span class="stat-l" data-t="sHarvest"></span><span class="stat-v num" id="hHarvest">–</span><span class="stat-s" data-t="sHarvestU"></span></div>
+        <div class="stat"><span class="stat-l" data-t="sMet"></span><span class="stat-v num" id="hMet">–</span><span class="stat-s" id="hMetS"></span></div>
+        <div class="stat"><span class="stat-l" data-t="sCost"></span><span class="stat-v num" id="kTotal">–</span><span class="stat-s" id="kTotalS"></span></div>
+        <div class="stat"><span class="stat-l" data-t="sPay"></span><span class="stat-v num" id="kPay">–</span><span class="stat-s" id="kPayS"></span></div>
+      </div>
+      <div class="grid2">
+        <div class="card">
+          <div class="card-h"><h2 data-t="sysTitle"></h2></div>
+          <dl class="kv" id="sys"></dl>
+          <div class="card-f"><a class="link" href="#cost" data-t="viewCost"></a></div>
         </div>
-        <ul>
-          <li><span data-t="equalTo"></span><b id="hTankers">–</b></li>
-          <li><span data-t="demandMet"></span><b id="hMet">–</b></li>
-          <li><span data-t="toGround"></span><b id="hRecharge">–</b></li>
-        </ul>
-      </section>
-
-      <section class="kpis">
-        <div class="kpi"><div class="l" data-t="annualRain"></div><div class="v num" id="kRain">–</div><div class="s" id="kRainS"></div></div>
-        <div class="kpi"><div class="l" data-t="usedFromTank"></div><div class="v num" id="kUsed">–</div><div class="s" data-t="litresPerYear"></div><span class="pill good" id="kUsedPill">–</span></div>
-        <div class="kpi"><div class="l" data-t="yearlySaving"></div><div class="v num" id="kSave">–</div><div class="s" data-t="pkrAtTanker"></div></div>
-        <div class="kpi"><div class="l" data-t="payback"></div><div class="v num" id="kPay">–</div><div class="s" id="kCost"></div></div>
-      </section>
-
-      <section class="panel">
-        <div class="card-h">
-          <h2 data-t="monthByMonth"></h2>
-          <div class="legend"><span><i class="sw rain"></i><span data-t="rainCollected"></span></span><span><i class="sw dem"></i><span data-t="householdDemand"></span></span></div>
+        <div class="card">
+          <div class="card-h"><h2 data-t="monthByMonth"></h2>
+            <div class="legend"><span><i class="sw rain"></i><span data-t="rainCollected"></span></span><span><i class="sw dem"></i><span data-t="householdDemand"></span></span></div>
+          </div>
+          <div class="chart" id="monthChart"></div>
+          <p class="fine" id="monthNote"></p>
+          <div class="card-f"><a class="link" href="#water" data-t="viewWater"></a></div>
         </div>
-        <div class="axis-cap"><span></span><span data-t="litresPerMonth"></span></div>
-        <div class="chart" id="monthChart"></div>
-        <p class="note" id="monthNote"></p>
-      </section>
+      </div>
+    </section>
 
-      <section class="panel">
-        <div class="card-h">
-          <h2 data-t="tankSize"></h2>
-          <span class="reco" id="reco"></span>
-        </div>
+    <!-- WATER -->
+    <section class="view" id="v-water" role="tabpanel" hidden>
+      <div class="page-h"><div><h1 data-t="tabWater"></h1><p class="muted" data-t="tankNote"></p></div></div>
+      <div class="card">
+        <div class="card-h"><h2 data-t="tankSize"></h2></div>
+        <p class="reco" id="reco"></p>
         <div class="tankrow">
           <input id="tank" type="range" min="0" max="11" step="1" aria-label="Tank size">
           <output id="tankOut" for="tank" class="num">–</output>
         </div>
         <div class="axis-cap"><span data-t="shareMet"></span><span id="tankAxis"></span></div>
         <div class="chart" id="tankChart"></div>
-        <p class="note" data-t="tankNote"></p>
-      </section>
+      </div>
+      <div class="card">
+        <div class="card-h"><h2 data-t="monthlyTable"></h2></div>
+        <div class="table-wrap"><table class="tbl" id="monthTable"></table></div>
+      </div>
+    </section>
 
-      <div class="two">
-        <section class="panel">
-          <h2 class="h2s" data-t="rechargeWell"></h2>
-          <dl>
+    <!-- COST -->
+    <section class="view" id="v-cost" role="tabpanel" hidden>
+      <div class="page-h">
+        <div><h1 data-t="costTitle"></h1><p class="muted" data-t="costDesc"></p></div>
+        <div class="page-h-r"><span class="total-l" data-t="grandTotal"></span><span class="total-v num" id="boqTotalTop">–</span></div>
+      </div>
+      <div class="card">
+        <ul class="specs" id="specs"></ul>
+        <div class="table-wrap"><table class="tbl boq" id="boq"></table></div>
+        <div class="boq-foot">
+          <label class="field inline" for="contingency"><span data-t="contingencyPct"></span><input id="contingency" type="number" min="0" max="50" step="1" inputmode="numeric"></label>
+          <p class="fine" data-t="costNote2"></p>
+        </div>
+      </div>
+      <div class="card" id="ratesCard">
+        <div class="card-h"><h2 data-t="ratesCardTitle"></h2><span class="status-pill" id="ratesStatus"></span></div>
+        <p class="muted small" data-t="ratesCardDesc"></p>
+        <p class="notice" id="ratesHint" hidden></p>
+        <div class="table-wrap"><table class="tbl rates" id="ratesTable"></table></div>
+        <div class="card-f"><button type="button" class="link" id="resetRates" data-t="resetRates"></button></div>
+      </div>
+      <div class="card">
+        <div class="card-h"><h2 data-t="costPayback"></h2></div>
+        <dl class="kv">
+          <dt data-t="totalCost"></dt><dd id="cTotal" class="num">–</dd>
+          <dt data-t="cSave"></dt><dd id="cSave" class="num">–</dd>
+          <dt data-t="cPay"></dt><dd id="cPay" class="num">–</dd>
+        </dl>
+        <p class="fine" data-t="costNote"></p>
+      </div>
+    </section>
+
+    <!-- RECHARGE -->
+    <section class="view" id="v-recharge" role="tabpanel" hidden>
+      <div class="page-h"><div><h1 data-t="rechargeWell"></h1><p class="muted" data-t="rechargeNote"></p></div></div>
+      <div class="grid2">
+        <div class="card">
+          <div class="card-h"><h2 data-t="wellCard"></h2></div>
+          <dl class="kv">
             <dt data-t="overflowYear"></dt><dd id="rOver">–</dd>
             <dt data-t="monsoonOverflow"></dt><dd id="rMonsoon">–</dd>
             <dt data-t="designStorm"></dt><dd id="rStorm">–</dd>
             <dt data-t="stormStorage"></dt><dd id="rStore">–</dd>
           </dl>
-          <p class="wellbox"><span data-t="suggestedWell"></span><b id="rWell">–</b></p>
-          <p class="note" data-t="rechargeNote"></p>
-        </section>
-
-        <section class="panel">
-          <h2 class="h2s" data-t="costPayback"></h2>
-          <dl>
-            <dt data-t="totalCost"></dt><dd id="cTotal" class="total">–</dd>
-            <dt data-t="cSave"></dt><dd id="cSave">–</dd>
-            <dt data-t="cPay"></dt><dd id="cPay" class="total">–</dd>
+          <div class="callout"><span data-t="suggestedWell"></span><b id="rWell">–</b></div>
+        </div>
+        <div class="card">
+          <div class="card-h"><h2 data-t="areaTitle"></h2></div>
+          <p class="muted small" data-t="areaCardDesc"></p>
+          <label class="field inline" for="houses"><span data-t="houses"></span><input id="houses" type="number" min="1" step="50" inputmode="numeric"></label>
+          <dl class="kv">
+            <dt data-t="aHarvest"></dt><dd><b class="num" id="aHarvest">–</b> <span class="muted" data-t="mlYear"></span></dd>
+            <dt data-t="aTrips"></dt><dd><b class="num" id="aTrips">–</b> <span class="muted" data-t="tripsYear"></span></dd>
+            <dt data-t="aRecharge"></dt><dd><b class="num" id="aRecharge">–</b> <span class="muted" data-t="mlYear"></span></dd>
+            <dt data-t="aStorm"></dt><dd><b class="num" id="aStorm">–</b> <span class="muted" data-t="stormUnit"></span></dd>
           </dl>
-          <p class="note" data-t="costNote"></p>
-        </section>
+        </div>
       </div>
+    </section>
 
-      <section class="panel cost">
-        <div class="card-h"><h2 data-t="costTitle"></h2><span class="grand-pill num" id="boqTotalTop">–</span></div>
-        <p class="hint" data-t="costDesc"></p>
-        <ul class="specs" id="specs"></ul>
-        <div class="table-wrap"><table class="boq" id="boq"></table></div>
-        <div class="boq-foot">
-          <label for="contingency" class="cont"><span data-t="contingencyPct"></span><input id="contingency" type="number" min="0" max="50" step="1" inputmode="numeric"></label>
-          <p class="note" data-t="costNote2"></p>
-        </div>
-        <details id="ratesBox">
-          <summary><span data-t="ratesTitle"></span> · <span id="ratesStatus" class="rstatus"></span></summary>
-          <div class="table-wrap"><table class="rates" id="ratesTable"></table></div>
-          <div class="rates-foot"><button type="button" class="link" id="resetRates" data-t="resetRates"></button></div>
-        </details>
-      </section>
-
-      <section class="panel">
-        <div class="card-h"><h2 data-t="areaTitle"></h2></div>
-        <div class="row narrow">
-          <label for="houses"><span data-t="houses"></span><input id="houses" type="number" min="1" step="50" inputmode="numeric"></label>
-        </div>
-        <div class="kpis area">
-          <div class="kpi"><div class="l" data-t="aHarvest"></div><div class="v num" id="aHarvest">–</div><div class="s" data-t="mlYear"></div></div>
-          <div class="kpi"><div class="l" data-t="aTrips"></div><div class="v num" id="aTrips">–</div><div class="s" data-t="tripsYear"></div></div>
-          <div class="kpi"><div class="l" data-t="aRecharge"></div><div class="v num" id="aRecharge">–</div><div class="s" data-t="mlYear"></div></div>
-          <div class="kpi"><div class="l" data-t="aStorm"></div><div class="v num" id="aStorm">–</div><div class="s" data-t="stormUnit"></div></div>
-        </div>
-      </section>
-
-      <section class="panel report">
-        <div class="card-h"><h2 data-t="reportTitle"></h2></div>
-        <p class="hint" data-t="reportDesc"></p>
-        <div class="btns">
-          <button class="btn" type="button" id="dlEn" data-t="dlEn"></button>
-          <button class="btn alt" type="button" id="dlUr" data-t="dlUr"></button>
+    <!-- REPORT -->
+    <section class="view" id="v-report" role="tabpanel" hidden>
+      <div class="page-h"><div><h1 data-t="reportTitle"></h1><p class="muted" data-t="reportCardDesc"></p></div></div>
+      <div class="card report">
+        <div class="dl-grid">
+          <button class="dl" type="button" id="dlEn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M14 3v5h5M12 11v6m-3-3l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.6"/></svg><span><b data-t="dlEnShort"></b><small>A4 · PDF</small></span></button>
+          <button class="dl" type="button" id="dlUr"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M14 3v5h5M12 11v6m-3-3l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.6"/></svg><span><b data-t="dlUrShort"></b><small>A4 · PDF</small></span></button>
         </div>
         <p class="status" id="dlMsg" role="status"></p>
-      </section>
-
-      <section class="panel">
-        <div class="card-h">
-          <h2 data-t="summaryTitle"></h2>
-          <button class="btn ghost" type="button" id="copy" data-t="copy"></button>
-        </div>
-        <p class="hint" id="copyMsg" data-t="copyHint"></p>
+      </div>
+      <div class="card">
+        <div class="card-h"><h2 data-t="summaryTitle"></h2><button class="btn" type="button" id="copy" data-t="copy"></button></div>
+        <p class="muted small" id="copyMsg" data-t="summaryDesc"></p>
         <pre class="summary" id="summary"></pre>
-      </section>
+      </div>
+    </section>
 
-      <footer data-t="footer"></footer>
-    </main>
-  </div>
+    <footer class="foot fine" data-t="footer"></footer>
+  </main>
 </div>
+<div class="tip" id="rateChipTip" role="tooltip" hidden></div>
 <script type="module" src="/src/main.js"></script>
 </body>
 </html>

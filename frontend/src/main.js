@@ -1,8 +1,6 @@
 import "@fontsource/inter/400.css";
 import "@fontsource/inter/500.css";
 import "@fontsource/inter/600.css";
-import "@fontsource/sora/600.css";
-import "@fontsource/sora/700.css";
 import "@fontsource/jetbrains-mono/500.css";
 import "@fontsource/noto-nastaliq-urdu/400.css";
 import "@fontsource/noto-nastaliq-urdu/700.css";
@@ -13,7 +11,7 @@ import { RATE_ITEMS, PLOTS, PBS, PBS_CITY } from "./shared/rates.js";
 import { MONTHS, t, fmt, round100, money } from "./shared/i18n.js";
 
 const API = (import.meta.env.VITE_API_URL || "").replace(/\/+$/, "");
-const STORE = "rwh-planner-v3";
+const STORE = "rwh-planner-v4";
 const $ = id => document.getElementById(id);
 
 // ---------- state ----------
@@ -57,6 +55,7 @@ function applyLang() {
   renderSelects();
   fillForm();
   if (lastResult) renderRates(lastResult, true);
+  renderRateStatus();
 }
 
 function fillForm() {
@@ -90,17 +89,22 @@ $("resetRates").addEventListener("click", () => { S.rates = null; S.tank = null;
 // ---------- live rates ----------
 async function loadRates() {
   const city = S.city;
-  if (!API) { published = null; ratesMeta = { builtIn: true }; update(); return; }
+  if (!API) { published = null; ratesMeta = { builtIn: true }; renderRateStatus(); update(); return; }
   try {
-    const res = await fetch(`${API}/api/rates?city=${encodeURIComponent(city)}`);
-    if (!res.ok) throw new Error("HTTP " + res.status);
+    let res;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try { res = await fetch(`${API}/api/rates?city=${encodeURIComponent(city)}`, { signal: AbortSignal.timeout(25000) }); if (res.ok) break; }
+      catch (e) { if (attempt) throw e; }
+      await new Promise(r => setTimeout(r, 1500));
+    }
+    if (!res || !res.ok) throw new Error("HTTP " + (res && res.status));
     const data = await res.json();
     if (city !== S.city) return;
     published = data.rates; ratesMeta = data;
   } catch (e) {
     console.warn("rates:", e.message); published = null; ratesMeta = { offline: true };
   }
-  renderRates(null, true); update();
+  renderRates(null, true); renderRateStatus(); update();
 }
 $("tank").addEventListener("input", e => { S.tank = TANKS[+e.target.value]; update(); });
 
@@ -132,7 +136,7 @@ function monthChart(r) {
 function tankChart(r) {
   const n = narrow("tankChart"), W = n ? 380 : 640, H = n ? 210 : 190, L = 40, R = 14, T = 10, B = 28, iw = W - L - R, ih = H - T - B;
   const pct = r.curve.map(c => c.pct);
-  const mx = Math.max(10, Math.ceil(Math.max(...pct) / 10) * 10);
+  const mx = Math.min(100, Math.max(20, Math.ceil(Math.max(...pct) / 20) * 20));
   const xs = i => L + iw * i / (TANKS.length - 1), ys = p => T + ih - ih * p / mx;
   let g = "", d = "", a = `M${xs(0)},${T + ih}`;
   for (let i = 0; i <= 4; i++) { const y = T + ih - ih * i / 4; g += `<line x1="${L}" x2="${W - R}" y1="${y}" y2="${y}" stroke="var(--line)"/><text x="${L - 6}" y="${y + 4}" text-anchor="end">${fmt(mx * i / 4)}%</text>`; }
@@ -157,23 +161,30 @@ function update() {
   const wellWord = r.well.wells > 1 ? t(L, "wellN") : t(L, "well1");
   const wellText = t(L, "wellText", { n: r.well.wells, wellWord, d: fmt(r.well.diameter, 1), depth: fmt(r.well.depth, 1) });
 
-  $("hCity").textContent = t(L, "heroEyebrow", { city: cityName + (r.edited ? " " + t(L, "edited") : ""), area: fmt(r.A) });
+  const plotName = S.plot === "custom" ? t(L, "customArea") : (PLOTS.find(p => p.key === S.plot)?.[L] || "");
+  $("ovSub").textContent = t(L, "ovSub", { city: cityName + (r.edited ? " " + t(L, "edited") : ""), plot: plotName, area: fmt(r.A), people: S.people });
   $("hHarvest").textContent = fmt(round100(r.harvest));
-  $("hTankers").textContent = t(L, "tankersN", { n: fmt(r.tankersEquivalent, 1) });
   $("hMet").textContent = fmt(r.met) + "%";
-  $("hRecharge").textContent = litres(r.sim.over);
-
-  $("kRain").textContent = fmt(r.annualRain);
-  $("kRainS").textContent = t(L, "mmYear") + (r.edited ? " " + t(L, "edited") : "");
-  $("kUsed").textContent = fmt(round100(r.sim.used));
-  const pill = $("kUsedPill"); pill.textContent = t(L, "pctDemand", { p: fmt(r.met) }); pill.className = "pill " + (r.met >= 50 ? "good" : "warn");
-  $("kSave").textContent = fmt(round100(r.cost.save));
-  $("kPay").textContent = pay ? t(L, "yrsShort", { n: fmt(pay, 1) }) : "–";
-  $("kCost").textContent = t(L, "onTotal", { cost: money(L, r.cost.total) });
+  $("hMetS").textContent = t(L, "sMetU", { l: fmt(round100(r.sim.used)) });
+  $("kTotal").textContent = money(L, r.cost.total);
+  $("kTotalS").textContent = t(L, "sCostU", { p: fmt(r.boq.contingencyPct) });
+  $("kPay").textContent = pay ? t(L, "yearsN", { n: fmt(pay, 1) }) : "–";
+  $("kPayS").textContent = t(L, "sPayU", { s: money(L, r.cost.save) });
+  const b = r.boq;
+  $("sys").innerHTML = [
+    [t(L, "sysRoof"), `${fmt(r.A)} ${t(L, "m2")} · ${fmt(r.A / FT2)} ${t(L, "ft2")}`],
+    [t(L, "sysRain"), t(L, "mm", { n: fmt(r.annualRain) })],
+    [t(L, "sysTank"), t(L, "sysTankV", { v: fmt(r.tank), n: b.tanks })],
+    [t(L, "sysPipes"), t(L, "sysPipesV", { n: b.outlets, ft: fmt(b.pipeFt) })],
+    [t(L, "sysFilters"), t(L, b.filters === 1 ? "sysFilters1" : "sysFiltersV", { n: b.filters })],
+    [t(L, "sysWell"), wellText],
+    [t(L, "sysTanker"), t(L, "tankersN", { n: fmt(r.tankersEquivalent, 1) })],
+  ].map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("");
+  monthTable(r);
 
   $("tank").value = TANKS.indexOf(r.tank);
   $("tankOut").textContent = t(L, "litres", { n: fmt(r.tank) });
-  $("reco").innerHTML = t(L, "reco", { v: `<b>${fmt(r.recommended)}</b>` });
+  $("reco").innerHTML = t(L, "reco", { v: `<b class="num">${fmt(r.recommended)}</b>` });
 
   $("rOver").textContent = litres(r.well.overflow);
   $("rMonsoon").textContent = litres(r.well.monsoon);
@@ -189,7 +200,9 @@ function update() {
   $("aRecharge").textContent = fmt(r.area.rechargeML, 1);
   $("aStorm").textContent = fmt(r.area.stormM3);
 
-  monthChart(r); tankChart(r); renderBoq(r, wellText); renderRates(r);
+  if (view === "overview") monthChart(r);
+  if (view === "water") tankChart(r);
+  renderBoq(r, wellText); renderRates(r);
   const a = $("area"); if (document.activeElement !== a) a.value = S.unit === "ft2" ? Math.round(r.A / FT2) : Math.round(r.A * 10) / 10;
   $("summary").textContent = summaryText(r, L, cityName, wellText);
   try { localStorage.setItem(STORE, JSON.stringify(S)); } catch {}
@@ -218,6 +231,27 @@ function summaryText(r, L, cityName, wellText) {
   ].join("\n");
 }
 
+function monthTable(r) {
+  const L = S.lang, names = L === "ur" ? MONTHS.ur : MONTHS.en;
+  const sum = a => a.reduce((x, y) => x + y, 0);
+  const row = (m, rain, inn, dem) => { const bal = inn - dem; return `<td>${m}</td><td class="n">${fmt(rain, rain % 1 ? 1 : 0)}</td><td class="n">${fmt(round100(inn))}</td><td class="n">${fmt(round100(dem))}</td><td class="n ${bal >= 0 ? "pos" : "neg"}">${bal >= 0 ? "+" : "−"}${fmt(round100(Math.abs(bal)))}</td>`; };
+  $("monthTable").innerHTML = `<thead><tr><th>${t(L, "colMonth")}</th><th class="n">${t(L, "colRain")}</th><th class="n">${t(L, "colCollected")}</th><th class="n">${t(L, "colDemand")}</th><th class="n">${t(L, "colBalance")}</th></tr></thead><tbody>` +
+    r.inflow.map((v, i) => `<tr>${row(names[i], r.rain[i], v, r.demand[i])}</tr>`).join("") +
+    `</tbody><tfoot class="year"><tr>${row(t(L, "colTotal"), sum(r.rain), sum(r.inflow), sum(r.demand))}</tr></tfoot>`;
+}
+
+// ---------- tabs (hash routing) ----------
+const VIEWS = ["overview", "water", "cost", "recharge", "report"];
+let view = "overview";
+function route() {
+  const h = location.hash.replace("#", "");
+  view = VIEWS.includes(h) ? h : "overview";
+  for (const v of VIEWS) $("v-" + v).hidden = v !== view;
+  document.querySelectorAll(".tabs a").forEach(a => a.setAttribute("aria-selected", a.dataset.tab === view));
+  update();
+}
+addEventListener("hashchange", () => { route(); window.scrollTo({ top: 0 }); });
+
 // ---------- cost estimate ----------
 const META = Object.fromEntries(RATE_ITEMS.map(i => [i.key, i]));
 const GROUPS = [["conv", "gConv"], ["store", "gStore"], ["well", "gWell"], ["lab", "gLab"]];
@@ -233,7 +267,7 @@ function renderBoq(r, wellText) {
     t(L, "wellLine", { w: wellText }),
   ].map(x => `<li>${esc(x)}</li>`).join("");
   const head = `<thead><tr><th>${t(L, "colItem")}</th><th>${t(L, "colQty")}</th><th>${t(L, "colUnit")}</th><th>${t(L, "colRate")}</th><th>${t(L, "colAmount")}</th></tr></thead>`;
-  const body = GROUPS.map(([g, key]) => `<tr class="grp"><td colspan="4">${t(L, key)}</td><td>${fmt(b.groups[g])}</td></tr>` +
+  const body = GROUPS.map(([g, key]) => `<tr class="grp"><td colspan="4">${t(L, key)}</td><td class="n">${fmt(b.groups[g])}</td></tr>` +
     b.items.filter(i => i.group === g).map(i => {
       const rt = r.rates[i.key];
       const tag = rt.edited ? `<span class="tag">${t(L, "editedTag")}</span>` : rt.estimate ? `<span class="tag est">${t(L, "estimateTag")}</span>` : "";
@@ -249,23 +283,59 @@ function renderBoq(r, wellText) {
 function renderRates(r, force) {
   r = r || lastResult; if (!r) return;
   const L = S.lang, tbl = $("ratesTable");
-  // status line
-  const st = $("ratesStatus");
-  if (ratesMeta && ratesMeta.live) { st.textContent = t(L, "ratesLive", { t: new Date(ratesMeta.fetchedAt).toLocaleString(L === "ur" ? "ur-PK" : "en-GB", { dateStyle: "medium", timeStyle: "short", numberingSystem: "latn" }) }); st.className = "rstatus live"; }
-  else if (ratesMeta && ratesMeta.offline) { st.textContent = t(L, "ratesOffline"); st.className = "rstatus off"; }
-  else { const pc = PBS_CITY[S.city]; st.textContent = t(L, "ratesBuiltIn", { m: PBS.asOf, city: pc }); st.className = "rstatus"; }
   if (!force && tbl.contains(document.activeElement)) return; // don't redraw while typing
   const keys = [...RATE_ITEMS.map(i => i.key)];
   tbl.innerHTML = `<thead><tr><th>${t(L, "colItem")}</th><th>${t(L, "colUnit")}</th><th>${t(L, "colRate")}</th><th>${t(L, "source")}</th></tr></thead><tbody>` +
     keys.map(k => {
-      const rt = r.rates[k];
+      let rt = r.rates[k];
+      const srcText = String(rt.src || "").replace(PBS.source, "PBS Monthly Review on Price Indices, Annex-III");
+      rt = { ...rt, src: srcText };
       const src = rt.url ? `<a href="${esc(rt.url)}" target="_blank" rel="noopener">${esc(rt.src)}</a>` : esc(rt.src);
-      const tags = (rt.estimate ? `<span class="tag est">${t(L, "estimateTag")}</span>` : "") + (rt.live ? `<span class="tag live">live</span>` : "");
+      const tags = (rt.estimate ? `<span class="tag est">${t(L, "estimateTag")}</span>` : "") + (rt.live ? `<span class="tag live">${t(L, "liveTag")}</span>` : "");
       return `<tr><td>${esc(itemName(k))}</td><td>${esc(unitOf(k))}</td>
         <td><input type="number" min="0" step="any" inputmode="decimal" data-rate="${k}" value="${Math.round(rt.rate * 100) / 100}" aria-label="${esc(itemName(k))}"${rt.edited ? ' class="edited"' : ""}></td>
-        <td class="src"><span dir="ltr">${src}</span> <span class="asof">${t(L, "asOf", { d: esc(rt.asOf || "–") })}</span> ${tags}</td></tr>`;
+        <td class="src"><span dir="ltr">${src}</span> <span class="asof">${t(L, "asOf", { d: esc(monthLabel(rt.asOf) || "–") })}</span> ${tags}</td></tr>`;
     }).join("") + "</tbody>";
 }
+// "2026-10" -> "Oct 2026" / "اکتوبر 2026"; full dates stay as they are
+function monthLabel(s) {
+  const m = /^(\d{4})-(\d{2})$/.exec(s || "");
+  if (!m) return s;
+  const names = S.lang === "ur" ? MONTHS.ur : MONTHS.en;
+  return `${names[+m[2] - 1]} ${m[1]}`;
+}
+
+function renderRateStatus() {
+  const L = S.lang, meta = ratesMeta || {};
+  const m = monthLabel(meta.pbsMonth || PBS.asOf);
+  let cls = "", label, hint;
+  if (meta.live) {
+    cls = "live";
+    label = meta.sources?.pbs ? t(L, "rsLive", { m }) + (meta.sources?.sheet ? t(L, "rsSheet") : "") : t(L, "rsBundled", { m }) + t(L, "rsSheet");
+    const when = meta.fetchedAt ? new Date(meta.fetchedAt).toLocaleString(L === "ur" ? "ur-PK" : "en-GB", { dateStyle: "medium", timeStyle: "short", numberingSystem: "latn" }) : "";
+    hint = (meta.sources?.pbs ? t(L, "rsLiveHint", { m }) : t(L, "rsBundledHint", { m })) + (when ? " " + t(L, "rsChecked", { t: when }) : "");
+  } else if (meta.offline) { cls = "off"; label = t(L, "rsOffline", { m }); hint = t(L, "rsOfflineHint", { m }); }
+  else { label = t(L, "rsBundled", { m }); hint = t(L, "rsBundledHint", { m }); }
+  const chip = $("rateChip"); chip.className = "rate-chip " + cls; $("rateChipText").textContent = label; chip.dataset.tip = hint;
+  const pill = $("ratesStatus"); pill.className = "status-pill " + cls; pill.textContent = label;
+  const h = $("ratesHint"); h.hidden = !meta.offline; h.textContent = meta.offline ? hint : "";
+}
+
+// tooltip for the rate chip; clicking it opens the rates on the cost page
+const tip = $("rateChipTip");
+function showTip() {
+  const c = $("rateChip"), r = c.getBoundingClientRect();
+  tip.textContent = c.dataset.tip || ""; tip.hidden = !tip.textContent;
+  const w = Math.min(300, innerWidth - 24);
+  tip.style.top = r.bottom + 8 + "px";
+  tip.style.left = Math.max(12, Math.min(innerWidth - w - 12, r.left + r.width / 2 - w / 2)) + "px";
+  tip.style.width = w + "px";
+}
+const hideTip = () => { tip.hidden = true; };
+$("rateChip").addEventListener("mouseenter", showTip); $("rateChip").addEventListener("mouseleave", hideTip);
+$("rateChip").addEventListener("focus", showTip); $("rateChip").addEventListener("blur", hideTip);
+$("rateChip").addEventListener("click", () => { hideTip(); location.hash = "cost"; setTimeout(() => $("ratesCard").scrollIntoView({ behavior: "smooth", block: "start" }), 50); });
+
 $("ratesTable").addEventListener("input", e => {
   const k = e.target.dataset.rate; if (!k) return;
   const v = Number(e.target.value);
@@ -317,7 +387,14 @@ $("dlEn").addEventListener("click", () => download("en"));
 $("dlUr").addEventListener("click", () => download("ur"));
 
 // ---------- boot ----------
+$("resetAll").addEventListener("click", () => { S = { ...normalizeInputs({ ...DEFAULTS }), lang: S.lang }; applyLang(); update(); loadRates(); });
+// inputs panel: always open on wide screens, collapsible on phones
+const inputsBox = $("inputsBox"), wide = matchMedia("(min-width: 861px)");
+inputsBox.querySelector("summary").addEventListener("click", e => { if (wide.matches) e.preventDefault(); });
+const syncInputs = () => { inputsBox.open = wide.matches; };
+wide.addEventListener("change", syncInputs); syncInputs(); // phones: results first, inputs one tap away
+
 applyLang();
-update();
+route();
 loadRates();
 let rz; addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(update, 150); });

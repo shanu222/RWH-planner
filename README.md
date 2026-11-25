@@ -19,7 +19,8 @@ Built by Resilience Technologies Labs.
 | --- | --- | --- |
 | GET | `/api/health` | Service status |
 | GET | `/api/cities` | Rainfall normals, roof types, tank sizes, plot sizes, rate items, defaults |
-| GET | `/api/rates?city=` | Current rates for the cost estimate (rate sheet merged over published rates), with sources |
+| GET | `/api/rates?city=` | Current rates for the cost estimate (PBS live file + rate sheet over published rates), with sources |
+| GET | `/api/rates/status` | Which PBS month/file and sheet are in use, and any fetch error |
 | POST | `/api/calculate` | Body: design inputs → full results (JSON) |
 | POST | `/api/report?lang=en\|ur` | Body: `{ "inputs": { … } }` → A4 PDF design report |
 
@@ -38,7 +39,7 @@ Design inputs: `city`, `plot` (`3m`, `5m`, `7m`, `10m`, `1k`, `2k` or `custom`),
 | `ALLOWED_ORIGINS` | Your Vercel URL, e.g. `https://rwh-planner.vercel.app` (comma-separate several; `https://rwh-planner-*.vercel.app` allows preview builds) |
 | `REPORT_RATE_LIMIT` | `20` (PDF reports per visitor per 10 minutes) |
 | `NODE_ENV` | `production` |
-| `RATES_SOURCE_URL` | Optional. CSV link of your published rate sheet (see **Live rates** below) |
+| `RATES_SOURCE_URL` | Optional. Your Google Sheet link (see **Cost estimate and live rates**) |
 | `RATES_CACHE_MINUTES` | `360` (how often the rate sheet is re-read) |
 
 Railway sets `PORT` itself. `PUPPETEER_EXECUTABLE_PATH` is already set in the Docker image.
@@ -61,11 +62,20 @@ Railway sets `PORT` itself. `PUPPETEER_EXECUTABLE_PATH` is already set in the Do
 
 The app prices a bill of quantities for the chosen plot: 4" uPVC downpipes and elbows, first-flush filters, 2,000 L plastic tanks, the recharge well (bajri, sand, bricks, cement) and plumber, mason and labour days, plus an editable contingency.
 
-Rates come in three layers, each overriding the one before:
+Rates come in four layers, each overriding the one before:
 
-1. **Published rates bundled in the app**, with source and date: PBS *Monthly Review on Price Indices*, Annex-III city-wise construction prices (Sept 2026); Popular Pipes price list; retail tank and pipe prices; KWSC tanker tariff. The first-flush filter is marked as an estimate.
-2. **Your rate sheet** (live). Import `rates-template.csv` into Google Sheets, update the `rate` column monthly (e.g. from each new PBS release or supplier list), then **File → Share → Publish to web → Comma-separated values (.csv)**. Put that link in Railway's `RATES_SOURCE_URL`. Leave `city` blank for all cities, or name a city to override it there only. Changes show up within `RATES_CACHE_MINUTES`.
-3. **The user's own edits** in the "Rates used" table on the page (saved in their browser, included in the PDF and marked as edited).
+1. **Bundled published rates** with source and date (PBS Sept 2026, supplier price lists, KWSC tariff). Used if nothing else is reachable.
+2. **PBS, fetched live.** The API finds the newest *Monthly Review on Price Indices* on pbs.gov.pk, downloads its "Urban Construction Items Prices" Excel file and reads city-wise cement, bricks, sand, bajri, mason, labour and plumber prices. Every value is checked against the bundled figures (accepted within 0.5×–2×). Checked daily; no setup needed. `GET /api/rates/status` shows the month and file in use.
+3. **Your Google Sheet** for items PBS does not survey (pipes, fittings, tanks, filters, tanker water) and for any correction. Create a sheet with the columns of `rates-template.csv`, share it as *Anyone with the link – Viewer*, and paste its normal link into Railway's `RATES_SOURCE_URL`. The API reads it through Google's open CSV endpoint. Leave `city` blank for all cities, or name a city to override it there only.
+4. **The user's own edits** in the Rates table (saved in their browser, included in the PDF and marked as edited).
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `PBS_LIVE` | `on` | `off` disables the PBS fetch |
+| `PBS_CACHE_HOURS` | `24` | How often to look for a new PBS file |
+| `PBS_XLSX_URL` | – | Pin a specific PBS Excel file instead of the newest |
+| `RATES_SOURCE_URL` | – | Google Sheet link (or any CSV URL) |
+| `RATES_CACHE_MINUTES` | `360` | How often the sheet is re-read |
 
 ## Run locally
 
