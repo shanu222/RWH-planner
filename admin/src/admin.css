@@ -66,3 +66,5 @@ input[type="email"]:focus, input[type="number"]:focus, select:focus { outline: n
 #rTable { min-width: 760px; }
 .table-wrap { overflow-x: auto; }
 @media (max-width: 640px) { .row2.eq { grid-template-columns: 1fr; } .hide-sm { display: none; } }
+.secret { -webkit-text-security: disc; text-security: disc; font-family: var(--mono); }
+textarea { width: 100%; }

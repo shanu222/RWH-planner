@@ -117,7 +117,7 @@ Sign-in is email + password (`ADMIN_EMAIL`, `ADMIN_PASSWORD`), giving a 12-hour 
 | --- | --- |
 | Videos | Upload, edit, publish/unpublish, reorder, **delete**; translate titles and descriptions English ↔ Urdu with AI |
 | Rates | Change or refresh the Google Sheet link, see which source each rate comes from, set or clear per-city overrides |
-| AI and keys | Add, replace, **test** (even before saving) and remove OpenAI, Gemini and OpenRouter keys; models, provider order, retries, timeout, cache |
+| AI and keys | Add, replace, **test** (even before saving) and remove OpenAI, Gemini and OpenRouter keys; **add new providers or extra keys** (any OpenAI-compatible service such as Groq, DeepSeek, Mistral, Together, xAI, or a second OpenAI/Gemini key); models, provider order, retries, timeout, cache |
 | Account | Change password |
 
 Rates priority (later wins): bundled published rates → PBS file → Google Sheet → admin override → the visitor's own edits. The Google Sheet is the main source; admin overrides are for quick corrections.

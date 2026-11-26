@@ -120,6 +120,20 @@
       <p class="notice" id="aiStorageWarn" hidden>Storage is not configured, so key changes cannot be saved. Keys from Railway variables still work.</p>
       <div class="prov-grid" id="provGrid"></div>
       <section class="card">
+        <div class="card-h"><h2>Add a new key or provider</h2></div>
+        <p class="muted small">Add another OpenAI or Gemini key, or any OpenAI-compatible service (Groq, DeepSeek, Mistral, Together, xAI and others). It joins the fallback order, and you can reorder it below.</p>
+        <form id="addProvForm" class="beh-grid" autocomplete="off">
+          <div class="row2 eq">
+            <label class="field"><span>Service</span><select id="apPreset"></select></label>
+            <label class="field"><span>Name</span><input id="apName" type="text" maxlength="40" required></label>
+          </div>
+          <label class="field"><span>API base URL</span><input id="apUrl" type="url" placeholder="https://api.example.com/v1" required></label>
+          <label class="field"><span>API key</span><input id="apKey" type="text" class="secret" autocomplete="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore name="new-provider-key" required></label>
+          <label class="field"><span>Models, one per line (tried in order)</span><textarea id="apModels" rows="3" required></textarea></label>
+          <div class="ed-actions"><button class="btn primary" type="submit">Add and test</button><span class="status" id="apMsg" role="status"></span></div>
+        </form>
+      </section>
+      <section class="card">
         <div class="card-h"><h2>Behaviour</h2></div>
         <form id="aiForm" class="beh-grid">
           <label class="check"><input id="aiEnabled" type="checkbox"> AI features switched on</label>
