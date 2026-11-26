@@ -4,7 +4,7 @@ import { t } from "./shared/i18n.js";
 const $ = id => document.getElementById(id);
 const esc = v => String(v ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
-let API = "", getLang = () => "en", getInputs = () => ({}), available = null;
+let API = "", getLang = () => "en", getInputs = () => ({}), available = null, enabled = () => true;
 let history = [], busy = false;
 
 // small safe markdown: **bold**, "- " bullets, paragraphs
@@ -28,7 +28,7 @@ async function post(path, body) {
 }
 
 export async function initAssistant(opts) {
-  API = opts.api; getLang = opts.lang; getInputs = opts.inputs;
+  API = opts.api; getLang = opts.lang; getInputs = opts.inputs; if (opts.enabled) enabled = opts.enabled;
   $("chatForm").addEventListener("submit", e => { e.preventDefault(); send($("chatInput").value); });
   $("chatClear").addEventListener("click", () => { history = []; renderChat(); });
   $("chatChips").addEventListener("click", e => { const b = e.target.closest("button[data-q]"); if (b) send(b.textContent); });
@@ -38,7 +38,7 @@ export async function initAssistant(opts) {
     const r = await fetch(`${API}/api/ai/status`, { signal: AbortSignal.timeout(15000) });
     available = r.ok && (await r.json()).available;
   } catch { available = false; }
-  $("tabAssistant").hidden = !available;
+  $("tabAssistant").hidden = !available || !enabled();
 }
 
 export function renderAssistant() {

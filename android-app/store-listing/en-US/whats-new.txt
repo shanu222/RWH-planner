@@ -1,0 +1,7 @@
+First release of RWH Planner for Android.
+• Rooftop rainwater planner with live results for 9 cities in Pakistan
+• Tank size calculator, cost estimate at live PBS rates and payback
+• PDF design reports in English and Urdu
+• Training videos, guides and monsoon maintenance reminders
+• AI design assistant (AI-generated guidance)
+• Full Urdu interface, dark mode, works offline

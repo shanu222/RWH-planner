@@ -8,8 +8,9 @@ import { $, api, session, say } from "./api.js";
 import { loadVideos } from "./videos.js";
 import { loadRates } from "./rates.js";
 import { loadAi } from "./ai.js";
+import { loadAppSettings } from "./app-settings.js";
 
-const TABS = { videos: loadVideos, rates: loadRates, ai: loadAi, account: loadAccount };
+const TABS = { videos: loadVideos, rates: loadRates, ai: loadAi, app: loadAppSettings, account: loadAccount };
 let email = "";
 
 async function loadAccount() {

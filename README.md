@@ -11,7 +11,8 @@ Built by Resilience Technologies Labs.
 | --- | --- | --- | --- |
 | Web app | `frontend/` | Vercel | Vite single-page app. All calculations run instantly in the browser. English/Urdu switch with right-to-left Nastaliq layout. |
 | API | `backend/` | Railway (Docker) | Express API. Same calculation engine, plus PDF report generation with headless Chromium. |
-| Shared code | `shared/` | – | `calc.js` (engine, rainfall data), `rates.js` (published rates, plot sizes, BOQ items) and `i18n.js` (English + Urdu text). Copied into both apps by `npm run sync`. |
+| Android app | `android-app/` | Google Play | Expo / React Native app with its own mobile design, AdMob ads, offline mode, Urdu RTL. Same API and the same calculation engine. See `android-app/BUILD.md`. |
+| Shared code | `shared/` | – | `calc.js` (engine, rainfall data), `rates.js` (published rates, plot sizes, BOQ items), `i18n.js` (English + Urdu text), `videos.js`, `guides.js` and `app-config.js` (remote app settings). Copied into the web app, the API and the Android app by `npm run sync`. |
 
 ### API
 
@@ -23,6 +24,7 @@ Built by Resilience Technologies Labs.
 | GET | `/api/rates/status` | Which PBS month/file and sheet are in use, and any fetch error |
 | POST | `/api/calculate` | Body: design inputs → full results (JSON) |
 | POST | `/api/report?lang=en\|ur` | Body: `{ "inputs": { … } }` → A4 PDF design report |
+| GET | `/api/app-config` | Remote app settings for the website and the Android app: ads on/off per placement, AdMob ad unit IDs, minimum app version, announcement banner, feature switches, Play Store URL, share message |
 
 Design inputs: `city`, `plot` (`3m`, `5m`, `7m`, `10m`, `1k`, `2k` or `custom`), `marlaSize` (225 or 272.25), `storeys`, `area` (m², used when `plot` is `custom`), `roof` (`rcc`, `metal`, `tiles`, `paved`), `people`, `lpcd`, `houses`, `contingency` (%), optional `rates` (`{ key: PKR }` overrides), `tank` (litres) and `rain` (12 monthly values in mm).
 
@@ -164,3 +166,15 @@ Planning estimates only. A qualified engineer should verify the final design.
 ## Fonts
 
 Noto Nastaliq Urdu and Inter (SIL Open Font License), bundled via `@fontsource` packages and in `backend/src/fonts`.
+
+## App settings (website and Android app)
+
+Admin → **App settings** edits one remote configuration, stored with the other admin settings in R2 (`settings.json` → `appConfig`) and served publicly at `GET /api/app-config`. It is validated on the server (`shared/app-config.js`).
+
+- **Announcement banner** in English and Urdu with an optional https link. Shown at the top of the website and in the app until dismissed; a new text shows again.
+- **Features**: AI assistant, training videos, maintenance reminders. Switching one off hides it on the website and in the app.
+- **Ads** (Android only): global switch, each placement (Planner results banner, Cost banner, Videos list, full-screen ad after a PDF export), AdMob ad unit IDs, and the full-screen ad limits.
+- **Versions**: minimum supported version code (older apps show "Please update") and latest version code (older apps show an optional update note).
+- **Play Store URL**, **website URL** for share links, and the **share message**.
+
+The app reads it at launch and every 3 hours, and keeps the last copy for offline use. The website reads it on every load.

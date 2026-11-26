@@ -35,6 +35,7 @@
       <a role="tab" href="#videos" data-tab="videos">Videos</a>
       <a role="tab" href="#rates" data-tab="rates">Rates</a>
       <a role="tab" href="#ai" data-tab="ai">AI and keys</a>
+      <a role="tab" href="#app" data-tab="app">App settings</a>
       <a role="tab" href="#account" data-tab="account">Account</a>
     </nav>
   </header>
@@ -137,6 +138,71 @@
     </section>
 
     <!-- ACCOUNT -->
+    <section class="view" id="p-app" hidden>
+      <div class="page-h"><div><h1>App settings</h1><p class="muted">Remote settings for the Android app and the website. Changes apply to both within a few minutes, with no new app release.</p></div></div>
+      <p class="notice" id="appStorageWarn" hidden>Storage is not configured, so these settings cannot be saved.</p>
+      <form id="appForm" class="view">
+        <section class="card">
+          <div class="card-h"><h2>Announcement banner</h2></div>
+          <div class="beh-grid">
+            <label class="check"><input id="annOn" type="checkbox"> Show the announcement in the website and the app</label>
+            <div class="row2 eq">
+              <label class="field"><span>English text (up to 280 characters)</span><textarea id="annEn" rows="2" maxlength="280"></textarea></label>
+              <label class="field"><span>Urdu text</span><textarea id="annUr" rows="2" maxlength="280" dir="rtl" lang="ur"></textarea></label>
+            </div>
+            <label class="field"><span>Link (optional, https://)</span><input id="annLink" type="url" placeholder="https://"></label>
+          </div>
+        </section>
+        <section class="card">
+          <div class="card-h"><h2>Features</h2></div>
+          <div class="beh-grid">
+            <label class="check"><input id="fAi" type="checkbox"> AI assistant and design review</label>
+            <label class="check"><input id="fVideos" type="checkbox"> Training videos</label>
+            <label class="check"><input id="fReminders" type="checkbox"> Maintenance reminders (Android app)</label>
+          </div>
+        </section>
+        <section class="card">
+          <div class="card-h"><h2>Ads (Android app, Google AdMob)</h2></div>
+          <div class="beh-grid">
+            <label class="check"><input id="adsOn" type="checkbox"> Ads switched on</label>
+            <div class="row2 eq">
+              <label class="check"><input id="adResults" type="checkbox"> Banner on the Planner results</label>
+              <label class="check"><input id="adCost" type="checkbox"> Banner on the Cost screen</label>
+              <label class="check"><input id="adVideos" type="checkbox"> Ad in the Videos list</label>
+              <label class="check"><input id="adInter" type="checkbox"> Full-screen ad after a PDF export</label>
+            </div>
+            <div class="row3">
+              <label class="field"><span>Banner ad unit ID</span><input id="uBanner" type="text" spellcheck="false"></label>
+              <label class="field"><span>Videos list ad unit ID</span><input id="uVideos" type="text" spellcheck="false"></label>
+              <label class="field"><span>Interstitial ad unit ID</span><input id="uInter" type="text" spellcheck="false"></label>
+            </div>
+            <div class="row2 eq">
+              <label class="field"><span>Minimum time between full-screen ads (seconds)</span><input id="iGap" type="number" min="60" max="86400"></label>
+              <label class="field"><span>Full-screen ads per session (at most)</span><input id="iMax" type="number" min="0" max="10"></label>
+            </div>
+          </div>
+        </section>
+        <section class="card">
+          <div class="card-h"><h2>Versions, store and sharing</h2></div>
+          <div class="beh-grid">
+            <div class="row2 eq">
+              <label class="field"><span>Minimum supported version code (older apps must update)</span><input id="minV" type="number" min="1"></label>
+              <label class="field"><span>Latest version code (older apps see an optional update note)</span><input id="latestV" type="number" min="1"></label>
+            </div>
+            <div class="row2 eq">
+              <label class="field"><span>Play Store URL</span><input id="storeUrl" type="url"></label>
+              <label class="field"><span>Website URL (used in share links)</span><input id="webUrl" type="url"></label>
+            </div>
+            <div class="row2 eq">
+              <label class="field"><span>Share message (English)</span><textarea id="shareEn" rows="2" maxlength="300"></textarea></label>
+              <label class="field"><span>Share message (Urdu)</span><textarea id="shareUr" rows="2" maxlength="300" dir="rtl" lang="ur"></textarea></label>
+            </div>
+          </div>
+        </section>
+        <div class="ed-actions"><button class="btn primary" type="submit" id="appSave">Save app settings</button><span class="status" id="appMsg" role="status"></span></div>
+      </form>
+    </section>
+
     <section class="view" id="p-account" hidden>
       <div class="page-h"><div><h1>Account</h1><p class="muted" id="acctSub"></p></div></div>
       <section class="card narrow">

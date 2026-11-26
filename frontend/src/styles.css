@@ -380,3 +380,12 @@ body.learn .side { display: none; }
 .err-text { color: var(--bad); }
 @media (max-width: 1100px) { .ai-grid { grid-template-columns: 1fr; } }
 @media print { .appbar, .side { display: none; } }
+
+/* admin announcement banner (remote app settings) */
+.announce { background: var(--brand); color: #fff; }
+.announce-in { display: flex; align-items: center; gap: 12px; min-height: 40px; padding-block: 6px; font-size: 13.5px; }
+.announce-in > :first-child { flex: 1; color: inherit; }
+.announce-in a { text-decoration: underline; }
+.announce[lang="ur"] { font-family: "Noto Nastaliq Urdu", var(--font); line-height: 2; }
+.announce-x { flex: none; width: 32px; height: 32px; border: 0; border-radius: 6px; background: transparent; color: inherit; font-size: 20px; cursor: pointer; }
+.announce-x:hover { background: rgba(255,255,255,.15); }

@@ -11,6 +11,7 @@ import { RATE_ITEMS, PLOTS, PBS, PBS_CITY } from "./shared/rates.js";
 import { MONTHS, t, fmt, round100, money } from "./shared/i18n.js";
 import { initLearn, renderTraining, renderGuides, openFromHash } from "./learn.js";
 import { initAssistant, renderAssistant } from "./assistant.js";
+import { initRemote, renderAnnouncement, featureOn } from "./remote.js";
 
 const API = (import.meta.env.VITE_API_URL || "").replace(/\/+$/, "");
 const STORE = "rwh-planner-v4";
@@ -62,6 +63,7 @@ function renderSelects() {
 }
 
 function applyLang() {
+  renderAnnouncement();
   const L = S.lang;
   document.documentElement.lang = L;
   document.documentElement.dir = L === "ur" ? "rtl" : "ltr";
@@ -268,6 +270,7 @@ let view = "overview";
 function route() {
   const h = location.hash.replace("#", "").split("/")[0];
   view = VIEWS.includes(h) ? h : "overview";
+  if ((view === "training" && !featureOn("videos")) || (view === "assistant" && !featureOn("ai"))) view = "overview";
   for (const v of VIEWS) $("v-" + v).hidden = v !== view;
   document.querySelectorAll(".tabs a").forEach(a => a.setAttribute("aria-selected", a.dataset.tab === view));
   document.body.classList.toggle("learn", LEARN.includes(view));
@@ -426,7 +429,8 @@ $("copyShare").addEventListener("click", async () => {
   const b = $("copyShare"); b.textContent = t(S.lang, "linkCopied"); setTimeout(() => { b.textContent = t(S.lang, "copyLink"); }, 1800);
 });
 initLearn({ api: API, lang: () => S.lang });
-initAssistant({ api: API, lang: () => S.lang, inputs: () => { const o = {}; for (const k of SHARE_KEYS) if (S[k] != null) o[k] = S[k]; return o; } });
+initRemote({ api: API, lang: () => S.lang }).then(c => { if (c) route(); });
+initAssistant({ api: API, lang: () => S.lang, enabled: () => featureOn("ai"), inputs: () => { const o = {}; for (const k of SHARE_KEYS) if (S[k] != null) o[k] = S[k]; return o; } });
 
 applyLang();
 route();

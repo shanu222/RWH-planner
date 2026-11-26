@@ -8,6 +8,7 @@
 //   POST /api/report?lang=en|ur   A4 PDF design report (English or Urdu)
 //   GET  /api/videos              published training videos
 //   GET  /api/videos/:id/stream   redirect to the video file (signed R2 link)
+//   GET  /api/app-config          remote config for the web and Android apps (ads, announcement, features, min version)
 //   /api/admin/*                  video management (Authorization: Bearer ADMIN_TOKEN)
 import express from "express";
 import cors from "cors";
@@ -21,6 +22,7 @@ import { adminConfigured, adminProblem, login, loginAllowed, loginFailed, sessio
 import { getSettings, saveSettings } from "./settings.js";
 import { aiAvailable, aiSettingsView, saveAiSettings, testProvider, clearAiCache, PROVIDERS } from "./ai.js";
 import * as aiFeatures from "./ai-features.js";
+import { validateAppConfig } from "./shared/app-config.js";
 
 const PORT = Number(process.env.PORT) || 8080;
 const ALLOWED = (process.env.ALLOWED_ORIGINS || "*").split(",").map(s => s.trim()).filter(Boolean);
@@ -132,6 +134,13 @@ for (const kind of ["stream", "thumb"]) {
   }));
 }
 
+// ---------- remote app config (public) ----------
+const appConfig = async () => validateAppConfig((await getSettings()).appConfig || {}).config;
+app.get("/api/app-config", wrap(async (req, res) => {
+  res.set("Cache-Control", "public, max-age=60");
+  res.json({ ...(await appConfig()), ai: await aiAvailable().catch(() => false), serverTime: new Date().toISOString() });
+}));
+
 // ---------- AI features (public) ----------
 const aiHits = new Map();
 function aiLimit(req, res, next) {
@@ -205,6 +214,18 @@ app.put("/api/admin/ai", admin, wrap(async (req, res) => { await saveAiSettings(
 app.post("/api/admin/ai/test", admin, wrap(async (req, res) => res.json(await testProvider(req.body?.provider, req.body?.key))));
 app.post("/api/admin/ai/clear-cache", admin, (req, res) => { clearAiCache(); res.json({ ok: true }); });
 app.post("/api/admin/ai/translate", admin, wrap(async (req, res) => res.json(await aiFeatures.translate(req.body || {}))));
+
+// app settings (remote config for the web and Android apps)
+app.get("/api/admin/app-config", admin, wrap(async (req, res) => { res.set("Cache-Control", "no-store"); res.json({ config: await appConfig(), storage: storageReady }); }));
+app.put("/api/admin/app-config", admin, wrap(async (req, res) => {
+  const body = req.body && typeof req.body === "object" ? structuredClone(req.body) : {};
+  if (body.announcement) delete body.announcement.id; // recomputed from the text
+  delete body.updatedAt;
+  const { config, errors } = validateAppConfig(body);
+  if (errors.length) return res.status(400).json({ error: errors.join(" "), errors });
+  const saved = await saveSettings(s => { s.appConfig = { ...config, updatedAt: new Date().toISOString() }; return s; });
+  res.json({ config: saved.appConfig });
+}));
 
 // account
 app.get("/api/admin/account", admin, wrap(async (req, res) => res.json({ email: req.admin.e, passwordSource: await passwordSource(), storage: storageReady })));

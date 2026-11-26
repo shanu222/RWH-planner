@@ -1,10 +1,11 @@
-// Copies shared/*.js into frontend/src/shared and backend/src/shared.
+// Copies shared/*.js into frontend/src/shared, backend/src/shared and android-app/src/shared.
 // Run `npm run sync` after editing anything in shared/. `npm run check` fails if copies drift.
 import { readdirSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import path from "node:path";
-const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..");
+import { fileURLToPath } from "node:url";
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const src = path.join(root, "shared");
-const targets = ["frontend/src/shared", "backend/src/shared"].map(p => path.join(root, p));
+const targets = ["frontend/src/shared", "backend/src/shared", "android-app/src/shared"].map(p => path.join(root, p));
 const check = process.argv.includes("--check");
 let drift = 0;
 for (const f of readdirSync(src).filter(f => f.endsWith(".js"))) {

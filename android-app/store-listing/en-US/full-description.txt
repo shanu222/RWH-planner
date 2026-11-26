@@ -1,0 +1,30 @@
+Plan a rooftop rainwater harvesting system for your home, school, mosque or office in Pakistan, in English or Urdu. RWH Planner tells you how much rain your roof can collect, which tank size makes sense, what the whole system will cost at today's rates, and how quickly it pays for itself.
+
+WHY RAINWATER HARVESTING?
+One millimetre of rain on one square metre of roof gives one litre of water. A typical 5 marla house in Islamabad can collect about 76,000 litres a year, and in Rawalpindi about 87,000. Stored rainwater covers flushing, washing and gardening, cuts tanker bills, and the overflow can recharge groundwater through a recharge well instead of flooding the street during the monsoon.
+
+WHAT YOU GET
+• Planner with live results: choose your city, plot size (marla / kanal) or exact roof area, roof surface, household size and daily use. Results update instantly.
+• Tank size calculator: a month-by-month water balance shows the share of demand met for every tank size, and recommends the largest tank that still pays for itself in saved water within 10 years.
+• Cost estimate (bill of quantities): downpipes, first-flush filters, tanks, recharge well materials and labour, priced with live rates from the Pakistan Bureau of Statistics monthly report and a maintained rate sheet. Every rate shows its source and date, and you can edit any rate.
+• Payback and savings at tanker water prices.
+• Recharge well design: number, diameter and depth of wells for a 50 mm design storm.
+• PDF design report in English or Urdu, saved on your phone and shared through WhatsApp, email or any app.
+• Training videos on rooftop harvesting, recharge wells, karez restoration, check dams and greywater reuse, with an in-app player.
+• Technique guides and a seasonal maintenance calendar for Pakistan's monsoon, with optional reminders.
+• AI design assistant: ask questions about your own design and get an AI design review. Answers are AI-generated guidance and are clearly labelled.
+• My designs: save, rename, duplicate and share designs as a link that opens on the web too.
+
+BUILT FOR PAKISTAN
+• Rainfall normals for Islamabad, Rawalpindi, Murree, Muzaffarabad, Lahore, Peshawar, Multan, Karachi and Quetta, with editable monthly values.
+• Full Urdu interface in Nastaliq script with right-to-left layout.
+• Works offline: the planner runs with published rates and your saved data when there is no connection.
+• Light and dark themes, large touch targets, screen reader labels and scalable text.
+• Phones, foldables and tablets, in portrait or landscape.
+
+PRIVACY
+No account or sign-up. Your designs stay on your phone. The app contains ads from Google AdMob, with Google's consent form where the law requires it.
+
+A planning tool for early design. Rainfall figures are long-term averages and real years vary. Have a qualified engineer check the final design before you build.
+
+Made by Resilience Technologies Labs to promote water conservation in Pakistan.
